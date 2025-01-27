@@ -1,13 +1,13 @@
 aws ec2 run-instances `
-    --ImageId "ami-ed8e8b294f5fa3e60" `
-    --InstanceType "t2.xlarge" `
-    --KeyName "factory" `
-    --BlockDeviceMappings '[{"DeviceName":"/dev/sda1", "Ebs": {"Encrypted": false, "DeleteOnTermination": true, "SnapshotId":"snap-Bef9f40bb7cb59f0c", "VolumeSize":258, "VolumeType": "gp2"}}, {"DeviceName":"/dev/xvdb", "Ebs": {"Encrypted": false, "DeleteOnTermination": true, "Iops": 1080, "VolumeSize":250, "VolumeType": "gp3", "Throughput":125}}]' `
-    --NetworkInterfaces '[{"SubnetId":"subnet-0338b959fc0de246b", "AssociatePublicIpAddress": true, "DeviceIndex":0, "Groups":"sg-Bc339ac2206321fec"}]' `
-    --CreditSpecification '{ "CpuCredits":"standard" }' `
-    --TagSpecifications '[{"ResourceType":"instance", "Tags": [{"Key":"Name", "Value": "Liberty Mutual DEE 3"}]}]' `
-    --MetadataOptions '{ "HttpEndpoint": "enabled", "HttpPutResponseHopLimit": 2, "HttpTokens": "required" }' `
-    --PrivateDnsNameOptions '{ "HostnameType": "ip-name", "EnableResourceNameDnsARecord": false, "EnableResourceNameDnsAAAARecord": false }' `
-    --Count 1 `
-    --VpcId "vpc-08044672db1453f1d" `
-    --SubnetId "subnet-0338b959fc0de246b"
+    -ImageId "ami-ed8e8b294f5fa3e60" `
+    -InstanceType "t2.xlarge" `
+    -KeyName "factory" `
+    -BlockDeviceMappings '[{"DeviceName":"/dev/sda1", "Ebs": {"Encrypted": false, "DeleteOnTermination": true, "SnapshotId":"snap-Bef9f40bb7cb59f0c", "VolumeSize":258, "VolumeType": "gp2"}}, {"DeviceName":"/dev/xvdb", "Ebs": {"Encrypted": false, "DeleteOnTermination": true, "Iops": 1080, "VolumeSize":250, "VolumeType": "gp3", "Throughput":125}}]' `
+    -NetworkInterfaces '[{"SubnetId":"subnet-0338b959fc0de246b", "AssociatePublicIpAddress": true, "DeviceIndex":0, "Groups":"sg-Bc339ac2206321fec"}]' `
+    -CreditSpecification '{ "CpuCredits":"standard" }' `
+    -TagSpecifications '[{"ResourceType":"instance", "Tags": [{"Key":"Name", "Value": "Liberty Mutual DEE 3"}]}]' `
+    -MetadataOptions '{ "HttpEndpoint": "enabled", "HttpPutResponseHopLimit": 2, "HttpTokens": "required" }' `
+    -PrivateDnsNameOptions '{ "HostnameType": "ip-name", "EnableResourceNameDnsARecord": false, "EnableResourceNameDnsAAAARecord": false }' `
+    -Count 1 `
+    -VpcId "vpc-08044672db1453f1d" `
+    -SubnetId "subnet-0338b959fc0de246b"
