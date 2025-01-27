@@ -1,0 +1,1 @@
+So with the metrics.json i uploaded I need you to just convert the JSON into like a table, something readable in HTML. Please use Jinja for it or if not just python.  Because then you can just have a table in Jinja, just for loop rows, right? Just add row, add row, add row, add row, depending on your data you're passing through
