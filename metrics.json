@@ -1,0 +1,1106 @@
+{
+    "totalCount": 78,
+    "nextPageKey": null,
+    "resolution": "Inf",
+    "result": [
+        {
+            "metricId": "(builtin:billing.ddu.metrics.byMetric:splitBy(\"Metric Key\"):sum:sort(value(sum,descending)):limit(100)):names",
+            "dataPointCountRatio": 9.36E-5,
+            "dimensionCountRatio": 7.8E-4,
+            "data": [
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loginapdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loginapdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        4.320000171661377
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26apdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26apdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        4.314000129699707
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.createaccountapdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.createaccountapdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        4.253000259399414
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.idrapdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.idrapdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        4.138999938964844
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26_personal_circumstances_apdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26_personal_circumstances_apdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        3.9890005588531494
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.mpnapdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.mpnapdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        3.811000108718872
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.pslfapdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.pslfapdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        3.7730002403259277
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26_demographics_apdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26_demographics_apdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        3.622000217437744
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26_finances_apdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26_finances_apdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        3.5329999923706055
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loanconsolidationapdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loanconsolidationapdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        3.36899995803833
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulatorapdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulatorapdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        3.36899995803833
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.createaccountvisuallycomplete"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.createaccountvisuallycomplete"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.879999876022339
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loginerrors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loginerrors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.879999876022339
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loginuseractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loginuseractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.879999876022339
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.pslfvisuallycomplete"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.pslfvisuallycomplete"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.8739993572235107
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.createaccounterrors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.createaccounterrors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.861999988555908
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.createaccountuseractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.createaccountuseractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.8499999046325684
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.idruseractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.idruseractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.8499999046325684
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loginvisuallycomplete"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loginvisuallycomplete"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.8499999046325684
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.idrvisuallycomplete"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.idrvisuallycomplete"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.8489999771118164
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.pslfuseractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.pslfuseractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.8489999771118164
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26useractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26useractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.8489997386932373
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26visuallycomplete"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26visuallycomplete"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.8489997386932373
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.mpnuseractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.mpnuseractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.8459999561309814
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulatoruseractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulatoruseractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.8429999351501465
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.mpnvisuallycomplete"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.mpnvisuallycomplete"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.8429999351501465
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulatorvisuallycomplete"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulatorvisuallycomplete"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.8400001525878906
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loanconsolidationvisuallycomplete"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loanconsolidationvisuallycomplete"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.7200000286102295
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loanconsolidationuseractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loanconsolidationuseractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.7190001010894775
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26errors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26errors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.6000001430511475
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.pslferrors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.pslferrors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.445000171661377
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.idrerrors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.idrerrors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.374000310897827
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.mpnerrors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.mpnerrors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.3510003089904785
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulatorerrors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulatorerrors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        2.1010003089904785
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26_personal_circumstances_errors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26_personal_circumstances_errors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.9429998397827148
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26_demographics_errors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26_demographics_errors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.7139999866485596
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loanconsolidationerrors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loanconsolidationerrors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.6849998235702515
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26_finances_errors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26_finances_errors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.5960001945495605
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26_finances_xhr_duration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26_finances_xhr_duration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.4399999380111694
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26routechanges"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26routechanges"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.4399999380111694
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_repaymentpersonal_info_apdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_repaymentpersonal_info_apdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.4279998540878296
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26_demographics_routechange_duration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26_demographics_routechange_duration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.4249999523162842
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26_personal_circumstances_routechange_duration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26_personal_circumstances_routechange_duration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.4249999523162842
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26_demographics_xhr_duration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26_demographics_xhr_duration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.4249998331069946
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26_finances_routechange_duration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26_finances_routechange_duration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.4249998331069946
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.fafsainitial2025_26_personal_circumstances_xhr_duration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.fafsainitial2025_26_personal_circumstances_xhr_duration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.4249998331069946
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulatorroutechange"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulatorroutechange"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.4249998331069946
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_repaymentresutls_apdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_repaymentresutls_apdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.4190000295639038
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_repaymentresults_routechange"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_repaymentresults_routechange"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.4030002355575562
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_repaymentpersonal_info_routechange"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_repaymentpersonal_info_routechange"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.3970000743865967
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_repaymentresults_useractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_repaymentresults_useractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.3929998874664307
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_repaymentrepayment_goals_apdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_repaymentrepayment_goals_apdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.3780003786087036
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_repaymentrepayment_goals_routechange"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_repaymentrepayment_goals_routechange"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.3660000562667847
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_repaymentpersonal_info_useractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_repaymentpersonal_info_useractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.3530000448226929
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_repaymentresults_errors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_repaymentresults_errors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.3279998302459717
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_hardshipyour_situation_apdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_hardshipyour_situation_apdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.2369998693466187
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_hardshipresults_apdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_hardshipresults_apdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.2239999771118164
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_repaymentrepayment_goals_useractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_repaymentrepayment_goals_useractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.221000075340271
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_hardshipyour_situation_routechange"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_hardshipyour_situation_routechange"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.1649999618530273
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_hardshipresults_routechange"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_hardshipresults_routechange"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.138000249862671
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_repaymentpersonal_info_errors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_repaymentpersonal_info_errors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.0480000972747803
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_hardshipresults_useractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_hardshipresults_useractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        1.0210000276565552
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_borrowmoreenrollment_info_apdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_borrowmoreenrollment_info_apdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.9219999313354492
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_hardshipyour_situation_useractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_hardshipyour_situation_useractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.8840000033378601
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_borrowmoreenrollment_info_routechange"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_borrowmoreenrollment_info_routechange"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.7999999523162842
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_borrowmoreenrollment_info_useractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_borrowmoreenrollment_info_useractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.7130000591278076
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_borrowmoreresults_apdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_borrowmoreresults_apdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.6160001158714294
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_borrowmorepersonal_info_apdex"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_borrowmorepersonal_info_apdex"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.5719999670982361
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_borrowmoreresults_routechange"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_borrowmoreresults_routechange"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.48799997568130493
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_borrowmorepersonal_info_routechange"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_borrowmorepersonal_info_routechange"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.45700007677078247
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_repaymentrepayment_goals_errors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_repaymentrepayment_goals_errors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.34800007939338684
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_borrowmorepersonal_info_useractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_borrowmorepersonal_info_useractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.30300000309944153
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_borrowmoreresults_useractionduration"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_borrowmoreresults_useractionduration"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.2539999783039093
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_hardshipyour_situation_errors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_hardshipyour_situation_errors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.22500000894069672
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_hardshipresults_errors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_hardshipresults_errors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.14499999582767487
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_borrowmoreresults_errors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_borrowmoreresults_errors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.11699999868869781
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_borrowmoreenrollment_info_errors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_borrowmoreenrollment_info_errors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.10499998927116394
+                    ]
+                },
+                {
+                    "dimensions": [
+                        "calc:apps.web.studentaid.gov.loansimulator_borrowmorepersonal_info_errors"
+                    ],
+                    "dimensionMap": {
+                        "Metric Key": "calc:apps.web.studentaid.gov.loansimulator_borrowmorepersonal_info_errors"
+                    },
+                    "timestamps": [
+                        1737667020000
+                    ],
+                    "values": [
+                        0.02900000289082527
+                    ]
+                }
+            ]
+        }
+    ]
+}
