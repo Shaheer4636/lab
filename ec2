@@ -9,5 +9,4 @@ aws ec2 run-instances \
     --metadata-options '{"HttpEndpoint": "enabled", "HttpPutResponseHopLimit": 2, "HttpTokens": "required"}' \
     --private-dns-name-options '{"HostnameType": "ip-name", "EnableResourceNameDnsARecord": false, "EnableResourceNameDnsAAAARecord": false}' \
     --count 1 \
-    --subnet-id "subnet-0338b959fc0de246b" \
-    --vpc-id "vpc-08044672db1453f1d"
+    --subnet-id "subnet-0338b959fc0de246b"
