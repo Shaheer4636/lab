@@ -1,0 +1,13 @@
+aws ec2 run-instances \
+    --image-id "ami-ed8e8b294f5fa3e60" \
+    --instance-type "t2.xlarge" \
+    --key-name "factory" \
+    --block-device-mappings '[{"DeviceName":"/dev/sda1", "Ebs": {"Encrypted": false, "DeleteOnTermination": true, "SnapshotId":"snap-Bef9f40bb7cb59f0c", "VolumeSize":258, "VolumeType": "gp2"}}, {"DeviceName":"/dev/xvdb", "Ebs": {"Encrypted": false, "DeleteOnTermination": true, "Iops": 1080, "VolumeSize":250, "VolumeType": "gp3", "Throughput":125}}]' \
+    --network-interfaces '[{"SubnetId":"subnet-0338b959fc0de246b", "AssociatePublicIpAddress": true, "DeviceIndex":0, "Groups":"sg-Bc339ac2206321fec"}]' \
+    --credit-specification '{ "CpuCredits":"standard" }' \
+    --tag-specifications '[{"ResourceType":"instance", "Tags": [{"Key":"Name", "Value": "Liberty Mutual DEE 3"}]}]' \
+    --metadata-options '{ "HttpEndpoint": "enabled", "HttpPutResponseHopLimit": 2, "HttpTokens": "required" }' \
+    --private-dns-name-options '{ "HostnameType": "ip-name", "EnableResourceNameDnsARecord": false, "EnableResourceNameDnsAAAARecord": false }' \
+    --count 1 \
+    --vpc vpc-08044672db1453f1d \
+    --subnet subnet-0338b959fc0de246b
