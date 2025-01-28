@@ -2,7 +2,6 @@ aws ec2 run-instances \
     --image-id "ami-049dd04cca2dc5594" \
     --instance-type "t2.xlarge" \
     --key-name "Liberty DEE" \
-    --block-device-mappings '[{"DeviceName":"/dev/sda1", "Ebs": {"VolumeId": "vol-09f38ae0589b1445a", "Encrypted": false, "DeleteOnTermination": true}}, {"DeviceName":"/dev/xvdb", "Ebs": {"VolumeId": "vol-051df184f7adacde4", "Encrypted": false, "DeleteOnTermination": true}}]' \
     --network-interfaces '[{"SubnetId":"subnet-03386959fc0de24e6", "AssociatePublicIpAddress": true, "DeviceIndex": 0, "Groups":["sg-05543dd54913efdf5"]}]' \
     --credit-specification '{"CpuCredits":"standard"}' \
     --tag-specifications '[{"ResourceType": "instance", "Tags": [{"Key":"Name", "Value": "Liberty Mutual DEE 3"}]}]' \
