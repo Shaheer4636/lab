@@ -11,9 +11,10 @@ aws ec2 run-instances \
     --count 1 \
     --user-data '#!/bin/bash
     # Install the AWS Systems Manager (SSM) Agent
-    yum install -y https://amazonlinux-repos-us-west-2.s3.us-west-2.amazonaws.com/2018.03/amazon-ssm-agent-2.3.59.0-1.amzn2.x86_64.rpm
+    yum install -y https://amazonlinux-repos-us-west-2.s3.us-west-2.amazonaws.com/2018.03/latest/amzn-ssm-agent.rpm
     systemctl enable amazon-ssm-agent
     systemctl start amazon-ssm-agent
-    # Open RDP port (3389) in the instance's security group (ensure this is allowed in your SG)
-    iptables -A INPUT -p tcp --dport 3389 -j ACCEPT
-    systemctl restart iptables' 
+    
+    # Open RDP port (3389) in the instance''s security group (ensure this is allowed in your SG)
+    sudo iptables -A INPUT -p tcp --dport 3389 -j ACCEPT
+    sudo systemctl restart iptables'
