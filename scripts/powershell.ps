@@ -1,0 +1,91 @@
+
+<powershell>
+Start-Transcript -Path "C:\powershell.log" -Append
+Write-Host "Installing os softwares"
+Invoke-WebRequest https://chocolatey.org/install.ps1 -UseBasicParsing | Invoke-Expression
+choco install -y googlechrome
+choco install -y strawberryperl --x64
+choco install -y python   #choco install -y python3 --x64
+choco install -y tortoisesvn
+choco install -y notepadplusplus --x64
+choco install -y 7zip.install --pre 
+choco install -y dbeaver
+choco install -y filezilla
+choco install -y adobereader
+choco install -y winmerge --pre  #choco install -y araxismerge
+choco install -y graphviz
+choco install -y eclipse --version=4.33.0
+$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri https://aka.ms/installazurecliwindowsx64 -OutFile .\AzureCLI.msi; Start-Process msiexec.exe -Wait -ArgumentList '/I AzureCLI.msi /quiet'; Remove-Item .\AzureCLI.msi
+msiexec.exe /i https://download.oracle.com/java/21/latest/jdk-21_windows-x64_bin.msi /qn
+Invoke-WebRequest https://dlcdn.apache.org//ant/binaries/apache-ant-1.10.15-bin.zip -Outfile c:\apache-ant.zip #ant installation
+Expand-Archive -LiteralPath 'c:\apache-ant.zip' -DestinationPath C:\
+Copy-S3Object -BucketName dee-factory-software -Key strawberryperl-approved-modules.cmd -LocalFile c:\StrawberryPerl-approved-modules.cmd
+$env:Path += ";C:\Strawberry\c\bin;C:\Strawberry\perl\site\bin;C:\Strawberry\perl\bin"
+Write-host "Path after correction [$env:path]"
+& "c:\StrawberryPerl-approved-modules.cmd" | out-file c:\StrawberryPerl-approved-modules.log
+Write-Host "installation of os software completed"
+choco list --localonly  > c:\softwarelist.txt
+
+Write-Host "configuring E drive"
+Set-Disk -Number 1 -IsOffline $False 
+Initialize-Disk -Number 1 -PartitionStyle MBR -PassThru  
+New-Partition -DiskNumber 1 -DriveLetter E -UseMaximumSize  
+Format-Volume -DriveLetter E -FileSystem "NTFS"  -NewFileSystemLabel "Local Disk"
+
+if (Test-Path -Path "e:\") {
+    Copy-S3Object -BucketName dee-factory-software -Key analysis-factory-1.0.204-6137.zip -LocalFile e:\analysis-factory.zip
+    Copy-S3Object -BucketName dee-factory-software -Key cnv-factory-ccdva-j-1.0.63-6138.zip -LocalFile e:\cnv-factory-ccdva-j.zip    
+    Expand-Archive -LiteralPath 'e:\analysis-factory.zip' -DestinationPath e:\
+}
+else {
+     Write-Host "error occured on e:\"
+}
+
+if ((Test-Path -Path "e:\analysis-factory") -and (Test-Path -Path "e:\analysis-factory\analysis-directory-layout") -and (Test-Path -Path "e:\analysis-factory\analysis-projects") -and (Test-Path -Path "e:\analysis-factory\analysis-tools") -and (Test-Path -Path "e:\analysis-factory\how-to")) {
+    Write-Host "folder structure confirmed" 
+}
+else {
+    Write-Host "error occured during extract"
+    Write-Output "error occured during extract" > c:\errorfolderstructure.txt
+}
+
+Write-Host "installing postgres driver jar ..."
+if (Test-Path -Path "C:\Program Files\DBeaver\plugins") {
+    Copy-S3Object -BucketName dee-factory-software -Key postgresql-42.2.23.jar -LocalFile "C:\Program Files\DBeaver\plugins\postgresql-42.2.23.jar"
+}
+else {
+    Write-Host "error occured on postgres driver jar"
+}
+
+Write-Host "creating local user..."
+$saas = Get-SECSecretValue -SecretId "user/password" -Select SecretString | ConvertFrom-Json
+$Password =  ConvertTo-SecureString $saas.Password -AsPlainText -Force 
+New-LocalUser "factory" -Description "US factory user" -Password $Password -FullName "US Factory" -PasswordNeverExpires 
+New-LocalUser "factory2" -Description "US factory user2" -Password $Password -FullName "US Factory2" -PasswordNeverExpires 
+if ((Get-LocalGroup -Name "Administrators") -and (Get-LocalUser -Name "factory")) {
+    Add-LocalGroupMember -Group "Administrators" -Member "factory"
+    Write-Host "local user created"    
+}
+elseif ((Get-LocalGroup -Name "Administrators") -and (Get-LocalUser -Name "factory2")) {
+    Add-LocalGroupMember -Group "Administrators" -Member "factory2"
+    Write-Host "local user created"    
+}
+
+#folder acl
+$NewAcl = Get-Acl -Path "e:\"
+$fileSystemRights = "FullControl"
+$type = "Allow"
+$identity = "BUILTIN\Users"
+$identity2 = "BUILTIN\Administrators"
+# Create new rule
+$fileSystemAccessRuleArgumentList = $identity, $identity2, $fileSystemRights, $type
+$fileSystemAccessRule = New-Object -TypeName System.Security.AccessControl.FileSystemAccessRule -ArgumentList $fileSystemAccessRuleArgumentList
+# Apply new rule
+$NewAcl.SetAccessRule($fileSystemAccessRule)
+Set-Acl -Path "e:\" -AclObject $NewAcl
+Get-ChildItem -Path "e:\" -Recurse -Force | Set-Acl -AclObject $NewAcl
+
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/microsoft/Windows-Containers/Main/helpful_tools/Install-DockerCE/install-docker-ce.ps1" -o install-docker-ce.ps1
+
+./install-docker-ce.ps1
+</powershell>
