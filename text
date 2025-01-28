@@ -2,7 +2,7 @@ aws ec2 run-instances \
     --image-id "ami-049dd04cca2dc5594" \
     --instance-type "t2.xlarge" \
     --key-name "Liberty DEE" \
-    --block-device-mappings '[{"DeviceName":"/dev/sda1", "Ebs": {"Encrypted": false, "DeleteOnTermination": true, "VolumeSize":250, "VolumeType": "gp2"}}, {"DeviceName":"/dev/xvda", "Ebs": {"Encrypted": false, "DeleteOnTermination": true}}]' \
+    --block-device-mappings '[{"DeviceName":"/dev/sda1", "Ebs": {"VolumeId": "vol-09f38ae0589b1445a", "Encrypted": false, "DeleteOnTermination": true}}, {"DeviceName":"/dev/xvdb", "Ebs": {"VolumeId": "vol-051df184f7adacde4", "Encrypted": false, "DeleteOnTermination": true}}]' \
     --network-interfaces '[{"SubnetId":"subnet-03386959fc0de24e6", "AssociatePublicIpAddress": true, "DeviceIndex": 0, "Groups":["sg-05543dd54913efdf5"]}]' \
     --credit-specification '{"CpuCredits":"standard"}' \
     --tag-specifications '[{"ResourceType": "instance", "Tags": [{"Key":"Name", "Value": "Liberty Mutual DEE 3"}]}]' \
@@ -14,7 +14,7 @@ aws ec2 run-instances \
     yum install -y https://amazonlinux-repos-us-west-2.s3.us-west-2.amazonaws.com/2018.03/latest/amzn-ssm-agent.rpm
     systemctl enable amazon-ssm-agent
     systemctl start amazon-ssm-agent
-    
+
     # Open RDP port (3389) in the instance''s security group (ensure this is allowed in your SG)
     sudo iptables -A INPUT -p tcp --dport 3389 -j ACCEPT
     sudo systemctl restart iptables'
