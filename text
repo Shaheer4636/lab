@@ -1,4 +1,19 @@
-- remove the timestamps
-- also try and convert the metric key to just the tail end so we just want the last period section for example: calc:apps.web.studentaid.gov.loginapdex
-
-- Also for each of these there is a value section in the json that have a certain number associated with them.  Can you add another total row of these numbers by and add up all of these values?
+aws ec2 run-instances \
+    --image-id "ami-049dd04cca2dc5594" \
+    --instance-type "t2.xlarge" \
+    --key-name "Liberty DEE" \
+    --block-device-mappings '[{"DeviceName":"/dev/sda1", "Ebs": {"Encrypted": false, "DeleteOnTermination": true, "VolumeSize":250, "VolumeType": "gp2"}}, {"DeviceName":"/dev/xvda", "Ebs": {"Encrypted": false, "DeleteOnTermination": true}}]' \
+    --network-interfaces '[{"SubnetId":"subnet-03386959fc0de24e6", "AssociatePublicIpAddress": true, "DeviceIndex": 0, "Groups":["sg-05543dd54913efdf5"]}]' \
+    --credit-specification '{"CpuCredits":"standard"}' \
+    --tag-specifications '[{"ResourceType": "instance", "Tags": [{"Key":"Name", "Value": "Liberty Mutual DEE 3"}]}]' \
+    --metadata-options '{"HttpTokens":"required", "HttpEndpoint": "enabled", "HttpPutResponseHopLimit": 2}' \
+    --private-dns-name-options '{"HostnameType":"ip-name", "EnableResourceNameDnsARecord": false, "EnableResourceNameDnsAAAARecord": false}' \
+    --count 1 \
+    --user-data '#!/bin/bash
+    # Install the AWS Systems Manager (SSM) Agent
+    yum install -y https://amazonlinux-repos-us-west-2.s3.us-west-2.amazonaws.com/2018.03/amazon-ssm-agent-2.3.59.0-1.amzn2.x86_64.rpm
+    systemctl enable amazon-ssm-agent
+    systemctl start amazon-ssm-agent
+    # Open RDP port (3389) in the instance's security group (ensure this is allowed in your SG)
+    iptables -A INPUT -p tcp --dport 3389 -j ACCEPT
+    systemctl restart iptables' 
