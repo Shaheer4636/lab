@@ -1,0 +1,4 @@
+- remove the timestamps
+- also try and convert the metric key to just the tail end so we just want the last period section for example: calc:apps.web.studentaid.gov.loginapdex
+
+- Also for each of these there is a value section in the json that have a certain number associated with them.  Can you add another total row of these numbers by and add up all of these values?
