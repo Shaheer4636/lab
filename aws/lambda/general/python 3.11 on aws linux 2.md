@@ -4,7 +4,7 @@ Amazon Linux 2 doesn't include Python 3.11 by default.  This guide outlines the 
 
 ## 1. Update Packages
 
-
+```bash
 sudo yum update -y
 
 
