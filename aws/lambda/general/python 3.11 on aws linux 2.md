@@ -4,16 +4,16 @@ Amazon Linux 2 doesn't include Python 3.11 by default.  This guide outlines the 
 
 ## 1. Update Packages
 
-```bash
+
 sudo yum update -y
 
-```bash
+
 sudo yum groupinstall -y "Development Tools"
 sudo yum install -y gcc gcc-c++ make zlib-devel bzip2 bzip2-devel readline-devel \
 sqlite sqlite-devel openssl-devel xz xz-devel libffi-devel
 
 
-```bash
+
 cd /usr/src
 sudo curl -O [https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz](https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz)  # Replace with desired version
 sudo tar xvf Python-3.11.6.tgz
@@ -21,5 +21,5 @@ cd Python-3.11.6
 sudo ./configure --enable-optimizations
 sudo make altinstall
 
-```bash
+
 python3.11 --version
