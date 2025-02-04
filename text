@@ -1,34 +1,6 @@
-trigger:
-  - main  # Runs when changes are pushed to the main branch
+bash```
 
-variables:
-  acrName: 'your-acr-name.azurecr.io'  # Change this to your ACR
-  imageName: 'myapp'  # Your pre-built Docker image
-  tag: 'latest'  # Use the latest available image in ACR
-  aksNamespace: 'default'  # Namespace where the app will be deployed
-  helmChartPath: 'helm-chart'  # Path to the Helm chart
-  releaseName: 'myapp-release'  # Name of the Helm release
+docker run -d --name java-container 884cfeb9df98 cmd /K
 
-stages:
-- stage: Deploy
-  displayName: "Deploy to AKS"
-  jobs:
-  - job: Deploy
-    steps:
-    - task: HelmInstaller@1
-      displayName: "Install Helm"
-      inputs:
-        helmVersion: 'latest'
 
-    - task: HelmDeploy@0
-      displayName: "Deploy Helm Chart to AKS"
-      inputs:
-        azureSubscription: 'aks-service-connection'
-        kubernetesCluster: 'your-aks-cluster'
-        namespace: $(aksNamespace)
-        command: 'upgrade'
-        chartType: 'FilePath'
-        chartPath: $(helmChartPath)
-        releaseName: $(releaseName)
-        valueFile: '$(helmChartPath)/values.yaml'
-        overrideValues: 'image.repository=$(acrName)/$(imageName),image.tag=$(tag)'
+docker run -it --name java-container 884cfeb9df98 cmd
