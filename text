@@ -1,5 +1,5 @@
-[System.Environment]::SetEnvironmentVariable("HTTP_PROXY", $null, [System.EnvironmentVariableTarget]::Machine)
-[System.Environment]::SetEnvironmentVariable("HTTPS_PROXY", $null, [System.EnvironmentVariableTarget]::Machine)
-[System.Environment]::SetEnvironmentVariable("REQUESTS_CA_BUNDLE", $null, [System.EnvironmentVariableTarget]::Machine)
-[System.Environment]::SetEnvironmentVariable("ADL_Python_SSL_NO_Verify", $null, [System.EnvironmentVariableTarget]::Machine)
-[System.Environment]::SetEnvironmentVariable("Azure_CLI_DISABLE_CONNECTION_VERIFICATION", $null, [System.EnvironmentVariableTarget]::Machine)
+$env:HTTP_PROXY="http://proxy.conexus.svc.local:3128"
+$env:HTTPS_PROXY="http://proxy.conexus.svc.local:3128"
+$env:REQUESTS_CA_BUNDLE="C:\Program Files\Microsoft SDKs\Azure\CLI2\Lib\site-packages\certifi\cacert.pem"
+$env:ADL_Python_SSL_NO_Verify=1
+$env:Azure_CLI_DISABLE_CONNECTION_VERIFICATION=1
