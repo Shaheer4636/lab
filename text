@@ -1,4 +1,140 @@
-Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile AzureCLI.msi; Start-Process msiexec.exe -ArgumentList "/I AzureCLI.msi /quiet" -Wait; Remove-Item -Force AzureCLI.msi
+REM #############################################################################
+REM # Basic environment setup:                                                  #
+REM #    to be done before running any batch or online programs                 #
+REM #                                                                           #
+REM # Following environment variables are expected to be set:                   #
+REM #    JAVA_HOME: home location of java, %JAVA_HOME%/bin/java.exe expected    #
+REM #    DB_BACKUP_RESTORE_TOOLS_HOME: home of backup/restore tools             # 
+REM #    DB_ADMIN_USER: for backup/restore                                      # 
+REM #    DB_ADMIN_PASSWORD: for backup/restore                                  # 
+REM #############################################################################
+
+@ECHO off
+
+REM ### Environment settings needed
+REM #############################################################################
+SET JAVA_HOME=C:\Program Files\Java\jdk-11.0.9
+SET DB_BACKUP_RESTORE_TOOLS_HOME=C:\Program Files\PostgreSQL\12\bin
+SET DB_ADMIN_USER=postgres
+SET DB_ADMIN_PASSWORD=ctYaiBWhmD950gBOindo
+
+REM ### Base locations
+REM #############################################################################
+
+REM # Root directory of execution environment = parent dir of current env.bat's dir
+CALL :ResolvePath RUN_DIR "%~dp0.."
+SET RUN_DIR=%RUN_DIR:\=/%
+
+REM # Derived directories
+SET TEMP_DIR=%RUN_DIR%/temp-files
+SET LOG_DIR=%RUN_DIR%/log-files
+SET LOG_FILE=%LOG_DIR%/videorental.log
+SET IBM_FILE_ROOT=%RUN_DIR%/data-files
+SET IBM_SYSOUT_FILE_DIR=%RUN_DIR%/sysout-files
+SET IBM_SYSOUT_FILE_NAME_PATTERN=%%m/%%j.%%s.%%l.%%d-%%t.%%o
+SET IBM_TEMP_DIR_ROOT=%RUN_DIR%/temp-files
 
 
-Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile AzureCLI.msi; Start-Process msiexec.exe -ArgumentList "/I AzureCLI.msi /quiet" -Wait; Remove-Item -Force AzureCLI.msi
+REM ### Framework settings
+REM #############################################################################
+SET ABX_SOURCE_PLATFORM=ZOS
+SET ZOS_DECLARATIONS=%RUN_DIR%/framework/bash/zos_declarations
+
+REM ### Application settings
+REM #############################################################################
+
+REM # DB credentials
+REM Replace the DB name below for batch processing
+SET APP_DB_HOST=localhost
+SET APP_DB_PORT=5432
+SET APP_DB_NAME=videorental
+SET APP_DB_JDBC_URL=jdbc:postgresql://prd-pgsql-1:5432/videorental
+SET APP_DB_USER=demo
+SET APP_DB_SECRET=oDstXzSSUoWYOYXFzXBXRfgX
+SET FRMWK_DB_JDBC_URL=jdbc:postgresql://prd-pgsql-1:5432/videorental
+SET FRMWK_DB_USER=%APP_DB_USER%
+SET FRMWK_DB_SECRET=%APP_DB_SECRET%
+
+REM # CICS Region settings
+SET CICS_SYSID=ANBX
+
+REM # Redis Settings
+SET REDIS_HOST=localhost
+SET REDIS_PORT=6379
+
+REM # Process Management Settings
+SET PMS_HOST=localhost
+SET PMS_PORT=8010
+
+REM # Recovery Service Settings
+SET RECOVERY_HOST=localhost
+SET RECOVERY_PORT=1020
+
+REM # Presentation Service Settings
+SET PS_PORT=8001
+SET PS_HTTP_PORT=8002
+SET PS_3270_PORT=8003
+
+REM # Main XML config file (used by driver code and inside the ZOS services impl. so name must not be changed)
+REM # TODO: get rid of this env. var
+REM # TODO: make all utilities accept explicit config file
+SET ZOS_SERVICES_CONFIG=%RUN_DIR%/config-files/application.config
+SET ZOS_STATE=%RUN_DIR%/config-files/online-state.xml
+
+SET CLASSPATH=
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/demo.videorental.copy.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/demo.videorental.integration.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/demo.videorental.programs.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/demo.videorental.bms-maps.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/jsupport.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/host-services-api.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/host-services-common.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/host-services-files.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/file-services.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/sql-services.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/ibm-services.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/zos-services.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/zos-services-utilities.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/cobol-services.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/terminal-services.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/cics-services.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/process-management-service-clientapi.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/process-management-service-taskapi.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/jedis-3.1.0.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/postgresql-42.2.14.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/sqlite-jdbc-3.8.11.2.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/jna.jar
+SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/jna-platform.jar
+
+REM # Used in application.config: the path used for looking for COBOL programs by the COBOL services library
+SET ABX_COBOL_PROGRAM_SEARCH_PATH=%RUN_DIR%/libraries/demo.videorental.programs.jar
+SET ABX_COBOL_PROGRAM_SEARCH_PATH=%ABX_COBOL_PROGRAM_SEARCH_PATH%;%RUN_DIR%/libraries/demo.videorental.integration.jar
+
+REM # Add profiling and/or debugging options as needed, e.g.
+REM # For debugging, add: -agentlib:jdwp=transport=dt_socket,address=8888,server=y,suspend=y
+REM # For profiling, add: -Dcom.sun.management.jmxremote.port=3333 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmx remote.authenticate=false
+SET DEBUG_PORT=8887
+SET DEBUG_BATCH_UTIL=
+REM DEBUG_BATCH_PROGRAM=-agentlib:jdwp=transport=dt_socket,address=%DEBUG_PORT%,server=y,suspend=y
+SET DEBUG_BATCH_PROGRAM=
+REM SET DEBUG_ONLINE=-agentlib:jdwp=transport=dt_socket,address=%DEBUG_PORT%,server=y,suspend=y
+SET DEBUG_ONLINE=
+
+SET ABX_BATCH_PROGRAM_CMD=java.exe -cp "%CLASSPATH%" %DEBUG_BATCH_PROGRAM% com.demo.videorental.drivers.BatchDriver --config-file=%ZOS_SERVICES_CONFIG% run
+
+set PROCESS_MANAGEMENT_SERVICE_DIR=%RUN_DIR%/pms
+set PRESENTATION_SERVICE_DIR=%RUN_DIR%/ps
+REM # Take from system
+REM set JAVA_HOME=%RUN_DIR%
+set JRE_EXEC="%JAVA_HOME%/bin/java.exe"
+set JVM_DLL="%JAVA_HOME%/bin/server/jvm.dll"
+FOR /F "tokens=* USEBACKQ" %%F IN (`powershell.exe -noninteractive -command Get-Date -Format "yyyyMMdd_HHmmss"`) DO ( set ZOS_JOB_START_TIME=%%F )
+FOR /F "tokens=* USEBACKQ" %%F IN (`powershell.exe -noninteractive -command [System.Diagnostics.Process]::GetCurrentProcess^(^).Id`) DO ( set ZOS_JOB_PID=%%F )
+SET ZOS_TEMP_DIR=%TEMP_DIR%
+SET ZOS_SPOOL_DIR=%TEMP_DIR%
+
+EXIT /B
+
+:ResolvePath
+    SET %1=%~dpfn2
+    EXIT /B
