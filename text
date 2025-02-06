@@ -1,140 +1,138 @@
-REM #############################################################################
-REM # Basic environment setup:                                                  #
-REM #    to be done before running any batch or online programs                 #
-REM #                                                                           #
-REM # Following environment variables are expected to be set:                   #
-REM #    JAVA_HOME: home location of java, %JAVA_HOME%/bin/java.exe expected    #
-REM #    DB_BACKUP_RESTORE_TOOLS_HOME: home of backup/restore tools             # 
-REM #    DB_ADMIN_USER: for backup/restore                                      # 
-REM #    DB_ADMIN_PASSWORD: for backup/restore                                  # 
-REM #############################################################################
+#!/bin/bash
 
-@ECHO off
+#############################################################################
+# Basic environment setup:
+#    to be done before running any batch or online programs
+#
+# Following environment variables are expected to be set:
+#    JAVA_HOME: home location of java, $JAVA_HOME/bin/java expected
+#    DB_BACKUP_RESTORE_TOOLS_HOME: home of backup/restore tools
+#    DB_ADMIN_USER: for backup/restore
+#    DB_ADMIN_PASSWORD: for backup/restore
+#############################################################################
 
-REM ### Environment settings needed
-REM #############################################################################
-SET JAVA_HOME=C:\Program Files\Java\jdk-11.0.9
-SET DB_BACKUP_RESTORE_TOOLS_HOME=C:\Program Files\PostgreSQL\12\bin
-SET DB_ADMIN_USER=postgres
-SET DB_ADMIN_PASSWORD=ctYaiBWhmD950gBOindo
+# ### Environment settings needed
+# #############################################################################
+export JAVA_HOME="/usr/lib/jvm/java-11-openjdk"
+export DB_BACKUP_RESTORE_TOOLS_HOME="/usr/pgsql-12/bin"
+export DB_ADMIN_USER="postgres"
+export DB_ADMIN_PASSWORD="ctYaiBWhmD950gBOindo"
 
-REM ### Base locations
-REM #############################################################################
+# ### Base locations
+# #############################################################################
 
-REM # Root directory of execution environment = parent dir of current env.bat's dir
-CALL :ResolvePath RUN_DIR "%~dp0.."
-SET RUN_DIR=%RUN_DIR:\=/%
+# Root directory of execution environment = parent dir of current env.sh's dir
+RUN_DIR="$(dirname "$(realpath "$0")")/.."
+RUN_DIR="${RUN_DIR//\\//}"  # Replace backslashes with forward slashes
 
-REM # Derived directories
-SET TEMP_DIR=%RUN_DIR%/temp-files
-SET LOG_DIR=%RUN_DIR%/log-files
-SET LOG_FILE=%LOG_DIR%/videorental.log
-SET IBM_FILE_ROOT=%RUN_DIR%/data-files
-SET IBM_SYSOUT_FILE_DIR=%RUN_DIR%/sysout-files
-SET IBM_SYSOUT_FILE_NAME_PATTERN=%%m/%%j.%%s.%%l.%%d-%%t.%%o
-SET IBM_TEMP_DIR_ROOT=%RUN_DIR%/temp-files
+# Derived directories
+TEMP_DIR="$RUN_DIR/temp-files"
+LOG_DIR="$RUN_DIR/log-files"
+LOG_FILE="$LOG_DIR/videorental.log"
+IBM_FILE_ROOT="$RUN_DIR/data-files"
+IBM_SYSOUT_FILE_DIR="$RUN_DIR/sysout-files"
+IBM_SYSOUT_FILE_NAME_PATTERN="%m/%j.%s.%l.%d-%t.%o"
+IBM_TEMP_DIR_ROOT="$RUN_DIR/temp-files"
 
+# ### Framework settings
+# #############################################################################
+export ABX_SOURCE_PLATFORM="ZOS"
+export ZOS_DECLARATIONS="$RUN_DIR/framework/bash/zos_declarations"
 
-REM ### Framework settings
-REM #############################################################################
-SET ABX_SOURCE_PLATFORM=ZOS
-SET ZOS_DECLARATIONS=%RUN_DIR%/framework/bash/zos_declarations
+# ### Application settings
+# #############################################################################
 
-REM ### Application settings
-REM #############################################################################
+# DB credentials
+# Replace the DB name below for batch processing
+export APP_DB_HOST="localhost"
+export APP_DB_PORT="5432"
+export APP_DB_NAME="videorental"
+export APP_DB_JDBC_URL="jdbc:postgresql://prd-pgsql-1:5432/videorental"
+export APP_DB_USER="demo"
+export APP_DB_SECRET="oDstXzSSUoWYOYXFzXBXRfgX"
+export FRMWK_DB_JDBC_URL="jdbc:postgresql://prd-pgsql-1:5432/videorental"
+export FRMWK_DB_USER="$APP_DB_USER"
+export FRMWK_DB_SECRET="$APP_DB_SECRET"
 
-REM # DB credentials
-REM Replace the DB name below for batch processing
-SET APP_DB_HOST=localhost
-SET APP_DB_PORT=5432
-SET APP_DB_NAME=videorental
-SET APP_DB_JDBC_URL=jdbc:postgresql://prd-pgsql-1:5432/videorental
-SET APP_DB_USER=demo
-SET APP_DB_SECRET=oDstXzSSUoWYOYXFzXBXRfgX
-SET FRMWK_DB_JDBC_URL=jdbc:postgresql://prd-pgsql-1:5432/videorental
-SET FRMWK_DB_USER=%APP_DB_USER%
-SET FRMWK_DB_SECRET=%APP_DB_SECRET%
+# CICS Region settings
+export CICS_SYSID="ANBX"
 
-REM # CICS Region settings
-SET CICS_SYSID=ANBX
+# Redis Settings
+export REDIS_HOST="localhost"
+export REDIS_PORT="6379"
 
-REM # Redis Settings
-SET REDIS_HOST=localhost
-SET REDIS_PORT=6379
+# Process Management Settings
+export PMS_HOST="localhost"
+export PMS_PORT="8010"
 
-REM # Process Management Settings
-SET PMS_HOST=localhost
-SET PMS_PORT=8010
+# Recovery Service Settings
+export RECOVERY_HOST="localhost"
+export RECOVERY_PORT="1020"
 
-REM # Recovery Service Settings
-SET RECOVERY_HOST=localhost
-SET RECOVERY_PORT=1020
+# Presentation Service Settings
+export PS_PORT="8001"
+export PS_HTTP_PORT="8002"
+export PS_3270_PORT="8003"
 
-REM # Presentation Service Settings
-SET PS_PORT=8001
-SET PS_HTTP_PORT=8002
-SET PS_3270_PORT=8003
+# Main XML config file (used by driver code and inside the ZOS services impl. so name must not be changed)
+# TODO: get rid of this env. var
+# TODO: make all utilities accept explicit config file
+export ZOS_SERVICES_CONFIG="$RUN_DIR/config-files/application.config"
+export ZOS_STATE="$RUN_DIR/config-files/online-state.xml"
 
-REM # Main XML config file (used by driver code and inside the ZOS services impl. so name must not be changed)
-REM # TODO: get rid of this env. var
-REM # TODO: make all utilities accept explicit config file
-SET ZOS_SERVICES_CONFIG=%RUN_DIR%/config-files/application.config
-SET ZOS_STATE=%RUN_DIR%/config-files/online-state.xml
+# Initialize CLASSPATH
+CLASSPATH=""
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/demo.videorental.copy.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/demo.videorental.integration.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/demo.videorental.programs.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/demo.videorental.bms-maps.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/jsupport.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/host-services-api.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/host-services-common.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/host-services-files.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/file-services.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/sql-services.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/ibm-services.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/zos-services.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/zos-services-utilities.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/cobol-services.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/terminal-services.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/cics-services.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/process-management-service-clientapi.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/process-management-service-taskapi.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/jedis-3.1.0.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/postgresql-42.2.14.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/sqlite-jdbc-3.8.11.2.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/jna.jar"
+CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/jna-platform.jar"
 
-SET CLASSPATH=
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/demo.videorental.copy.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/demo.videorental.integration.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/demo.videorental.programs.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/demo.videorental.bms-maps.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/jsupport.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/host-services-api.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/host-services-common.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/host-services-files.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/file-services.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/sql-services.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/ibm-services.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/zos-services.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/zos-services-utilities.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/cobol-services.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/terminal-services.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/cics-services.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/process-management-service-clientapi.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/process-management-service-taskapi.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/jedis-3.1.0.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/postgresql-42.2.14.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/sqlite-jdbc-3.8.11.2.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/jna.jar
-SET CLASSPATH=%CLASSPATH%;%RUN_DIR%/libraries/jna-platform.jar
+# Used in application.config: the path used for looking for COBOL programs by the COBOL services library
+export ABX_COBOL_PROGRAM_SEARCH_PATH="$RUN_DIR/libraries/demo.videorental.programs.jar"
+ABX_COBOL_PROGRAM_SEARCH_PATH="$ABX_COBOL_PROGRAM_SEARCH_PATH:$RUN_DIR/libraries/demo.videorental.integration.jar"
 
-REM # Used in application.config: the path used for looking for COBOL programs by the COBOL services library
-SET ABX_COBOL_PROGRAM_SEARCH_PATH=%RUN_DIR%/libraries/demo.videorental.programs.jar
-SET ABX_COBOL_PROGRAM_SEARCH_PATH=%ABX_COBOL_PROGRAM_SEARCH_PATH%;%RUN_DIR%/libraries/demo.videorental.integration.jar
+# Add profiling and/or debugging options as needed
+# For debugging, add: -agentlib:jdwp=transport=dt_socket,address=8888,server=y,suspend=y
+# For profiling, add: -Dcom.sun.management.jmxremote.port=3333 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false
+export DEBUG_PORT="8887"
+export DEBUG_BATCH_UTIL=""
+export DEBUG_BATCH_PROGRAM=""
+export DEBUG_ONLINE=""
 
-REM # Add profiling and/or debugging options as needed, e.g.
-REM # For debugging, add: -agentlib:jdwp=transport=dt_socket,address=8888,server=y,suspend=y
-REM # For profiling, add: -Dcom.sun.management.jmxremote.port=3333 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmx remote.authenticate=false
-SET DEBUG_PORT=8887
-SET DEBUG_BATCH_UTIL=
-REM DEBUG_BATCH_PROGRAM=-agentlib:jdwp=transport=dt_socket,address=%DEBUG_PORT%,server=y,suspend=y
-SET DEBUG_BATCH_PROGRAM=
-REM SET DEBUG_ONLINE=-agentlib:jdwp=transport=dt_socket,address=%DEBUG_PORT%,server=y,suspend=y
-SET DEBUG_ONLINE=
+export ABX_BATCH_PROGRAM_CMD="java -cp \"$CLASSPATH\" $DEBUG_BATCH_PROGRAM com.demo.videorental.drivers.BatchDriver --config-file=$ZOS_SERVICES_CONFIG run"
 
-SET ABX_BATCH_PROGRAM_CMD=java.exe -cp "%CLASSPATH%" %DEBUG_BATCH_PROGRAM% com.demo.videorental.drivers.BatchDriver --config-file=%ZOS_SERVICES_CONFIG% run
+export PROCESS_MANAGEMENT_SERVICE_DIR="$RUN_DIR/pms"
+export PRESENTATION_SERVICE_DIR="$RUN_DIR/ps"
 
-set PROCESS_MANAGEMENT_SERVICE_DIR=%RUN_DIR%/pms
-set PRESENTATION_SERVICE_DIR=%RUN_DIR%/ps
-REM # Take from system
-REM set JAVA_HOME=%RUN_DIR%
-set JRE_EXEC="%JAVA_HOME%/bin/java.exe"
-set JVM_DLL="%JAVA_HOME%/bin/server/jvm.dll"
-FOR /F "tokens=* USEBACKQ" %%F IN (`powershell.exe -noninteractive -command Get-Date -Format "yyyyMMdd_HHmmss"`) DO ( set ZOS_JOB_START_TIME=%%F )
-FOR /F "tokens=* USEBACKQ" %%F IN (`powershell.exe -noninteractive -command [System.Diagnostics.Process]::GetCurrentProcess^(^).Id`) DO ( set ZOS_JOB_PID=%%F )
-SET ZOS_TEMP_DIR=%TEMP_DIR%
-SET ZOS_SPOOL_DIR=%TEMP_DIR%
+# Take from system
+# set JAVA_HOME=$RUN_DIR
+export JRE_EXEC="$JAVA_HOME/bin/java"
+export JVM_DLL="$JAVA_HOME/bin/server/jvm.dll"
 
-EXIT /B
+# Get the current date and time for ZOS_JOB_START_TIME
+ZOS_JOB_START_TIME=$(date +"%Y%m%d_%H%M%S")
+ZOS_JOB_PID=$$
 
-:ResolvePath
-    SET %1=%~dpfn2
-    EXIT /B
+export ZOS_TEMP_DIR="$TEMP_DIR"
+export ZOS_SPOOL_DIR="$TEMP_DIR"
+
+exit 0
