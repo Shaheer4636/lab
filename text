@@ -1,138 +1,99 @@
-#!/bin/bash
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Standard PS config file for Linux/Docker-based deployments -->
+<configuration>
 
-#############################################################################
-# Basic environment setup:
-#    to be done before running any batch or online programs
-#
-# Following environment variables are expected to be set:
-#    JAVA_HOME: home location of java, $JAVA_HOME/bin/java expected
-#    DB_BACKUP_RESTORE_TOOLS_HOME: home of backup/restore tools
-#    DB_ADMIN_USER: for backup/restore
-#    DB_ADMIN_PASSWORD: for backup/restore
-#############################################################################
+  <!-- Mandatory logging -->
+  <logging>
+    <console>
+      <level>info</level>
+      <show-stack-trace>no</show-stack-trace>
+    </console>
+    <file>
+      <level>trace</level>
+      <path>${env:RUN_DIR}/log-files/ps-server.log</path>
+    </file>
+    <logger-list>
+      <logger>
+        <name>anubex.ps</name>
+        <level>trace</level>
+      </logger>          
+    </logger-list>
+  </logging>
 
-# ### Environment settings needed
-# #############################################################################
-export JAVA_HOME="/usr/lib/jvm/java-11-openjdk"
-export DB_BACKUP_RESTORE_TOOLS_HOME="/usr/pgsql-12/bin"
-export DB_ADMIN_USER="postgres"
-export DB_ADMIN_PASSWORD="ctYaiBWhmD950gBOindo"
+  <presentation-service>
+    <!--
+    <business-tier-interface>redis</business-tier-interface>
+    <redis-host>${env:REDIS_HOST}</redis-host>
+    <redis-port>${env:REDIS_PORT}</redis-port>
+    -->
 
-# ### Base locations
-# #############################################################################
+    <!-- Mandatory ports - must be unique -->
+    <service-management-port>${env:PS_PORT}</service-management-port>            <!-- start/stop service -->
+    <http-port>${env:PS_HTTP_PORT}</http-port>                                   <!-- admin pages + html client -->
+    
+    <server-root>${env:RUN_DIR}/config-files/ps-web-pages</server-root>          <!-- static pages -->
 
-# Root directory of execution environment = parent dir of current env.sh's dir
-RUN_DIR="$(dirname "$(realpath "$0")")/.."
-RUN_DIR="${RUN_DIR//\\//}"  # Replace backslashes with forward slashes
+    <process-management-service-address>${env:PMS_HOST}</process-management-service-address>
+    <process-management-service-port>${env:PMS_PORT}</process-management-service-port>
+    
+    <!-- optional logging -->    
+    <user-activity-log>${env:RUN_DIR}/log-files/ps-user-activity.log</user-activity-log>
+    <user-activity-log-preserve-days>1</user-activity-log-preserve-days>
+    <new-user-activity-log-interval-hours>1</new-user-activity-log-interval-hours>
+    <task-log>${env:RUN_DIR}/log-files/ps-task.log</task-log>
+    <task-log-preserve-days>1</task-log-preserve-days>
+    <task-log-interval-hours>1</task-log-interval-hours>
+    <performance-statistics-file>${env:RUN_DIR}/log-files/ps-performance-statistics.log</performance-statistics-file>
+    <performance-statistics-output-interval>60</performance-statistics-output-interval>
+    <performance-statistics-file-preserve-days>1</performance-statistics-file-preserve-days>
+    <communication-messages-log-file>${env:RUN_DIR}/log-files/ps-trace-messages.log</communication-messages-log-file>
+    <trace-directory>${env:RUN_DIR}/log-files/ps</trace-directory>
 
-# Derived directories
-TEMP_DIR="$RUN_DIR/temp-files"
-LOG_DIR="$RUN_DIR/log-files"
-LOG_FILE="$LOG_DIR/videorental.log"
-IBM_FILE_ROOT="$RUN_DIR/data-files"
-IBM_SYSOUT_FILE_DIR="$RUN_DIR/sysout-files"
-IBM_SYSOUT_FILE_NAME_PATTERN="%m/%j.%s.%l.%d-%t.%o"
-IBM_TEMP_DIR_ROOT="$RUN_DIR/temp-files"
+    <!-- Optional terminal interface -->
+    <terminal-interface>
+      <protocol>TN3270</protocol>
+      <port>${env:PS_3270_PORT}</port>
+      <program-charset>Windows-1252</program-charset>
+      <terminal-charset>IBM297</terminal-charset>
+      <show-logon-screen>false</show-logon-screen>
+      <logon-template>${env:RUN_DIR}/config-files/tn3270-logon.txt</logon-template>
+      <logon-template-charset>Windows-1252</logon-template-charset>
+      <user-id>terminaluser</user-id>
+      <password>terminaluser</password>
+      <connection>CICS</connection>
+    </terminal-interface>
+  
+    <!-- Authentication and authorization -->  
+    <access-control>
+      <name>default</name>
+      <settings>
+        <application>
+          <logon-mechanism>none</logon-mechanism>
+          <authorized-users>
+          </authorized-users>
+        </application>
+        <administration>
+          <logon-mechanism>none</logon-mechanism>
+          <authorized-users>
+          </authorized-users>
+        </administration>
+        <users>
+        </users>
+      </settings>
+    </access-control>
+  
+    <!-- Optional testmatch recording -->
+    <testmatch-settings>
+      <trace-directory>${env:RUN_DIR}/log-files/ps</trace-directory>
+      <log-file></log-file>
+      <log-level>DIAGNOSTICS</log-level>
+      <encrypt-invisible-editable-fields>false</encrypt-invisible-editable-fields>
+    </testmatch-settings>
 
-# ### Framework settings
-# #############################################################################
-export ABX_SOURCE_PLATFORM="ZOS"
-export ZOS_DECLARATIONS="$RUN_DIR/framework/bash/zos_declarations"
-
-# ### Application settings
-# #############################################################################
-
-# DB credentials
-# Replace the DB name below for batch processing
-export APP_DB_HOST="localhost"
-export APP_DB_PORT="5432"
-export APP_DB_NAME="videorental"
-export APP_DB_JDBC_URL="jdbc:postgresql://prd-pgsql-1:5432/videorental"
-export APP_DB_USER="demo"
-export APP_DB_SECRET="oDstXzSSUoWYOYXFzXBXRfgX"
-export FRMWK_DB_JDBC_URL="jdbc:postgresql://prd-pgsql-1:5432/videorental"
-export FRMWK_DB_USER="$APP_DB_USER"
-export FRMWK_DB_SECRET="$APP_DB_SECRET"
-
-# CICS Region settings
-export CICS_SYSID="ANBX"
-
-# Redis Settings
-export REDIS_HOST="localhost"
-export REDIS_PORT="6379"
-
-# Process Management Settings
-export PMS_HOST="localhost"
-export PMS_PORT="8010"
-
-# Recovery Service Settings
-export RECOVERY_HOST="localhost"
-export RECOVERY_PORT="1020"
-
-# Presentation Service Settings
-export PS_PORT="8001"
-export PS_HTTP_PORT="8002"
-export PS_3270_PORT="8003"
-
-# Main XML config file (used by driver code and inside the ZOS services impl. so name must not be changed)
-# TODO: get rid of this env. var
-# TODO: make all utilities accept explicit config file
-export ZOS_SERVICES_CONFIG="$RUN_DIR/config-files/application.config"
-export ZOS_STATE="$RUN_DIR/config-files/online-state.xml"
-
-# Initialize CLASSPATH
-CLASSPATH=""
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/demo.videorental.copy.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/demo.videorental.integration.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/demo.videorental.programs.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/demo.videorental.bms-maps.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/jsupport.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/host-services-api.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/host-services-common.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/host-services-files.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/file-services.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/sql-services.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/ibm-services.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/zos-services.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/zos-services-utilities.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/cobol-services.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/terminal-services.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/cics-services.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/process-management-service-clientapi.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/process-management-service-taskapi.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/jedis-3.1.0.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/postgresql-42.2.14.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/sqlite-jdbc-3.8.11.2.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/jna.jar"
-CLASSPATH="$CLASSPATH:$RUN_DIR/libraries/jna-platform.jar"
-
-# Used in application.config: the path used for looking for COBOL programs by the COBOL services library
-export ABX_COBOL_PROGRAM_SEARCH_PATH="$RUN_DIR/libraries/demo.videorental.programs.jar"
-ABX_COBOL_PROGRAM_SEARCH_PATH="$ABX_COBOL_PROGRAM_SEARCH_PATH:$RUN_DIR/libraries/demo.videorental.integration.jar"
-
-# Add profiling and/or debugging options as needed
-# For debugging, add: -agentlib:jdwp=transport=dt_socket,address=8888,server=y,suspend=y
-# For profiling, add: -Dcom.sun.management.jmxremote.port=3333 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false
-export DEBUG_PORT="8887"
-export DEBUG_BATCH_UTIL=""
-export DEBUG_BATCH_PROGRAM=""
-export DEBUG_ONLINE=""
-
-export ABX_BATCH_PROGRAM_CMD="java -cp \"$CLASSPATH\" $DEBUG_BATCH_PROGRAM com.demo.videorental.drivers.BatchDriver --config-file=$ZOS_SERVICES_CONFIG run"
-
-export PROCESS_MANAGEMENT_SERVICE_DIR="$RUN_DIR/pms"
-export PRESENTATION_SERVICE_DIR="$RUN_DIR/ps"
-
-# Take from system
-# set JAVA_HOME=$RUN_DIR
-export JRE_EXEC="$JAVA_HOME/bin/java"
-export JVM_DLL="$JAVA_HOME/bin/server/jvm.dll"
-
-# Get the current date and time for ZOS_JOB_START_TIME
-ZOS_JOB_START_TIME=$(date +"%Y%m%d_%H%M%S")
-ZOS_JOB_PID=$$
-
-export ZOS_TEMP_DIR="$TEMP_DIR"
-export ZOS_SPOOL_DIR="$TEMP_DIR"
-
-exit 0
+    <!-- Timeouts -->
+    <client-heartbeat-interval>60</client-heartbeat-interval>
+    <max-heartbeat-interval-before-session-cleanup>240</max-heartbeat-interval-before-session-cleanup>
+    <client-timeout>3600</client-timeout>
+    <server-timeout>3600</server-timeout>
+  </presentation-service>
+</configuration>
