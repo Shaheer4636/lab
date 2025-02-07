@@ -36,7 +36,7 @@
     <process-management-service-address>${PMS_HOST}</process-management-service-address>
     <process-management-service-port>${PMS_PORT}</process-management-service-port>
     
-    <!-- optional logging -->    
+    <!-- Optional logging -->    
     <user-activity-log>${RUN_DIR}/log-files/ps-user-activity.log</user-activity-log>
     <user-activity-log-preserve-days>1</user-activity-log-preserve-days>
     <new-user-activity-log-interval-hours>1</new-user-activity-log-interval-hours>
@@ -53,11 +53,11 @@
     <terminal-interface>
       <protocol>TN3270</protocol>
       <port>${PS_3270_PORT}</port>
-      <program-charset>Windows-1252</program-charset>
+      <program-charset>UTF-8</program-charset> <!-- Changed from Windows-1252 -->
       <terminal-charset>IBM297</terminal-charset>
       <show-logon-screen>false</show-logon-screen>
       <logon-template>${RUN_DIR}/config-files/tn3270-logon.txt</logon-template>
-      <logon-template-charset>Windows-1252</logon-template-charset>
+      <logon-template-charset>UTF-8</logon-template-charset> <!-- Changed from Windows-1252 -->
       <user-id>terminaluser</user-id>
       <password>terminaluser</password>
       <connection>CICS</connection>
