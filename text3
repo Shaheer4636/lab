@@ -10,18 +10,21 @@
       <level>trace</level>
     </console>
     <logger-list>
-      <logger> <name>com.sun.xml</name> <level>none</level> </logger>
-      <logger> <name>javax.xml.bind</name> <level>none</level> </logger>
-      <logger> <name>anubex</name> <level>info</level> </logger>
-      <logger> <name>anubex.fileservices</name> <level>info</level> </logger>
-      <logger> <name>anubex.sqlservices</name> <level>info</level> </logger>
-      <logger> <name>anubex.cicsservices</name> <level>info</level> </logger>
-      <logger> <name>anubex.terminalservices</name> <level>info</level> </logger>
-      <logger> <name>anubex.cobolservices</name> <level>info</level> </logger>
-      <logger> <name>anubex.cobolservices.config</name> <level>trace</level> </logger>
-      <logger> <name>anubex.cobolservices.control-flow</name> <level>info</level> </logger>
-      <logger> <name>anubex.cobolservices.device-io.console</name> <level>warning</level> </logger>
-      <logger> <name>anubex.cobolservices.device-io.sysout</name> <level>info</level> </logger>
+      <!-- get rid of ugly JAXB -->
+      <logger> <name>com.sun.xml</name>                                  <level>none</level>    </logger>
+      <logger> <name>javax.xml.bind</name>                               <level>none</level>    </logger>
+      
+      <logger> <name>anubex</name>                                       <level>info</level>   </logger>
+      <logger> <name>anubex.fileservices</name>                          <level>info</level>   </logger>
+      <logger> <name>anubex.sqlservices</name>                           <level>info</level>   </logger>
+      <logger> <name>anubex.cicsservices</name>                          <level>info</level>   </logger>
+      <logger> <name>anubex.terminalservices</name>                      <level>info</level>   </logger>
+      <logger> <name>anubex.cobolservices</name>                         <level>info</level>   </logger>
+      <logger> <name>anubex.cobolservices.config</name>                  <level>trace</level>   </logger>
+      <logger> <name>anubex.cobolservices.control-flow</name>            <level>info</level>    </logger>
+      <logger> <name>anubex.cobolservices.control-flow.procedures</name> <level>none</level>    </logger>
+      <logger> <name>anubex.cobolservices.device-io.console</name>       <level>warning</level>   </logger>
+      <logger> <name>anubex.cobolservices.device-io.sysout</name>        <level>info</level>    </logger>
     </logger-list>
   </logging>
 
@@ -51,7 +54,9 @@
     </error-code-mapping>
   </sql-services>
 
+
   <terminal-services>
+    <!--<business-tier-interface>redis</business-tier-interface>-->
     <business-tier-interface>pms</business-tier-interface>
     <redis-host>${env:REDIS_HOST}</redis-host>
     <redis-port>${env:REDIS_PORT}</redis-port>
@@ -69,7 +74,13 @@
       <name>ibm-enterprise-cobol</name>
     </flavor>
     <program-search-path>${env:ABX_COBOL_PROGRAM_SEARCH_PATH}</program-search-path>
+    <!--<entry-points-cache-file>${env:TEMP_DIR}/entry-points.cache</entry-points-cache-file>-->
+    <!-- Global compiler/runtime options.-->
     <options>
+      <!-- ADV/NOADV: whether an additional byte will be added to the data written with WRITE ADVANCING
+           Valid values: 'yes' or 'no'
+           Default: ‘yes’
+        -->
       <adv>yes</adv>
       <trunc>false</trunc>
     </options>
@@ -107,6 +118,7 @@
     <datform>MMDDYY</datform>
     <framework-connection-name>framework-connection</framework-connection-name>
     <application-connection-name>application-connection</application-connection-name>
+
     <redis-framework-connection-name>framework-connection</redis-framework-connection-name>
     <ts-queue-storage-mechanism>database</ts-queue-storage-mechanism>
     <commarea-storage-mechanism>database</commarea-storage-mechanism>
@@ -115,13 +127,15 @@
     <transaction-status-storage-mechanism>database</transaction-status-storage-mechanism>
     <file-status-storage-mechanism>database</file-status-storage-mechanism>
   </cics-services>
-
+ 
   <mq-services>
     <disable-mqgmo-convert>true</disable-mqgmo-convert>
     <implementation-api>jms</implementation-api>
   </mq-services>
 
-  <zos-services>
+  <!-- ZOS/batch specifics -->
+  
+	<zos-services>
     <logging-verbosity-level>info</logging-verbosity-level>
     <default-charset>ISO-8859-15</default-charset>
     <default-message-class>X</default-message-class>
@@ -131,9 +145,12 @@
       </file-accessor-plugin-settings>
     </file-accessor-definition>
     <default-record-length>0</default-record-length>
+    <new-behavior>STANDARD</new-behavior>
     <directories-must-exist>false</directories-must-exist>
     <debugging-active>false</debugging-active>
     <program-dispatcher>DefaultProgramDispatcher</program-dispatcher>
+    <le-runtime-options>
+    </le-runtime-options>
   </zos-services>
 
 </configuration>
