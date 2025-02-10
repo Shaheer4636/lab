@@ -5,20 +5,22 @@
 #    to be done before running any batch or online programs
 #
 # Following environment variables are expected to be set:
-#    JAVA_HOME: home location of java, $JAVA_HOME/bin/java expected
+#    JAVA_HOME: home location of Java, $JAVA_HOME/bin/java expected
 #    DB_BACKUP_RESTORE_TOOLS_HOME: home of backup/restore tools
 #    DB_ADMIN_USER: for backup/restore
-#    DB_ADMIN_PASSWORD: for backup/restore
+#    DB_ADMIN_PASSWORD: for backup/restore (should be stored securely)
 ##############################################################################
 
 # Environment settings
 export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
 export DB_BACKUP_RESTORE_TOOLS_HOME="/usr/pgsql-12/bin"
 export DB_ADMIN_USER="postgres"
-export DB_ADMIN_PASSWORD="ctYaiBWhmD950gBOindo"
+
+# Avoid hardcoding sensitive information
+export DB_ADMIN_PASSWORD="${DB_ADMIN_PASSWORD:-''}" # Use env var if available
 
 # Base locations
-RUN_DIR="$(dirname "$(readlink -f "$0")")/.."
+RUN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export RUN_DIR
 
 # Derived directories
@@ -40,7 +42,8 @@ export APP_DB_PORT=5432
 export APP_DB_NAME="videorental"
 export APP_DB_JDBC_URL="jdbc:postgresql://prd-pgsql-1:5432/videorental"
 export APP_DB_USER="demo"
-export APP_DB_SECRET="oDstXzSSUoWYOYXFzXBXRfgX"
+export APP_DB_SECRET="${APP_DB_SECRET:-''}" # Avoid hardcoding
+
 export FRMWK_DB_JDBC_URL="$APP_DB_JDBC_URL"
 export FRMWK_DB_USER="$APP_DB_USER"
 export FRMWK_DB_SECRET="$APP_DB_SECRET"
@@ -69,12 +72,12 @@ export PS_3270_PORT=8003
 export ZOS_SERVICES_CONFIG="$RUN_DIR/config-files/application.config"
 export ZOS_STATE="$RUN_DIR/config-files/online-state.xml"
 
-# CLASSPATH settings
+# CLASSPATH settings (Fixing loop issue)
 CLASSPATH=""
 for JAR in "$RUN_DIR/libraries"/*.jar; do
-  CLASSPATH="$CLASSPATH:$JAR"
+  [ -f "$JAR" ] && CLASSPATH="$CLASSPATH:$JAR"
 done
-export CLASSPATH
+export CLASSPATH="${CLASSPATH#:}" # Remove leading colon
 
 # COBOL Program Search Path
 export ABX_COBOL_PROGRAM_SEARCH_PATH="$RUN_DIR/libraries/demo.videorental.programs.jar:$RUN_DIR/libraries/demo.videorental.integration.jar"
