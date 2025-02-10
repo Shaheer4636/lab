@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Standard PS config file for Linux/Docker-based deployments -->
+<configuration>
+  <!-- Mandatory logging -->
+  <logging>
+	  <console>
+  	  <level>trace</level>
+  	  <show-stack-trace>yes</show-stack-trace>
+	  </console>
+	  <file>
+	    <level>trace</level>
+	    <path>/var/log/ps-server-${env:HOSTNAME}.log</path>
+	  </file>
+	  <logger-list>
+	    <logger>
+	      <name>anubex.ps</name>
+	      <level>trace</level>
+	    </logger>	         
+	  </logger-list>
+	</logging>
+
+  <presentation-service>
+    <!-- Mandatory ports - must be unique -->
+    <service-management-port>9000</service-management-port>  <!-- To be exposed + mapped: start/stop service -->
+    <http-port>9001</http-port>                              <!-- To be exposed + mapped: admin pages + html client -->
+  
+    <server-root>/etc/config/ps-web-pages</server-root>      <!-- Static pages -->
+
+    <!-- TODO: bug as it appears these two lines need to be present even when using redis -->
+    <process-management-service-address>localhost</process-management-service-address>
+    <process-management-service-port>9003</process-management-service-port>
+    
+    <business-tier-interface>redis</business-tier-interface>
+    <redis-host>localhost</redis-host>
+    <redis-port>6379</redis-port>
+    
+    <!-- optional logging -->    
+    <user-activity-log>/var/log/ps-user-activity-${env:HOSTNAME}.log</user-activity-log>
+    <user-activity-log-preserve-days>1</user-activity-log-preserve-days>
+    <new-user-activity-log-interval-hours>1</new-user-activity-log-interval-hours>
+    <task-log>/var/log/ps-task-${env:HOSTNAME}.log</task-log>
+    <task-log-preserve-days>1</task-log-preserve-days>
+    <task-log-interval-hours>1</task-log-interval-hours>
+    <performance-statistics-file>/var/log/ps-performance-statistics-${env:HOSTNAME}.log</performance-statistics-file>
+    <performance-statistics-output-interval>60</performance-statistics-output-interval>
+    <performance-statistics-file-preserve-days>1</performance-statistics-file-preserve-days>
+    <communication-messages-log-file>/var/log/ps-trace-messages-${env:HOSTNAME}.log</communication-messages-log-file>
+    <!-- <trace-directory>/var/log</trace-directory> -->
+
+    <!-- Optional terminal interface -->
+    <terminal-interface>
+      <protocol>TN3270</protocol>
+      <port>9002</port> <!-- To be exposed + mapped -->
+      <program-charset>Windows-1252</program-charset>
+      <terminal-charset>IBM297</terminal-charset>
+      <show-logon-screen>false</show-logon-screen>
+      <logon-template>/etc/config/tn3270-logon.txt</logon-template>
+      <logon-template-charset>Windows-1252</logon-template-charset>
+      <user-id>terminaluser</user-id>
+      <password>terminaluser</password>
+      <connection>CICS</connection>
+    </terminal-interface>
+  
+    <!-- Authentication and authorization -->  
+    <access-control>
+      <name>default</name>
+      <settings>
+        <application>
+          <logon-mechanism>none</logon-mechanism>
+          <authorized-users>
+          </authorized-users>
+        </application>
+        <administration>
+          <logon-mechanism>none</logon-mechanism>
+          <authorized-users>
+          </authorized-users>
+        </administration>
+        <users>
+        </users>
+      </settings>
+    </access-control>
+  
+    <!-- Optional testmatch recording -->
+    <testmatch-settings>
+      <trace-directory>/var/log</trace-directory>
+      <log-file></log-file>
+      <log-level>DIAGNOSTICS</log-level>
+      <encrypt-invisible-editable-fields>false</encrypt-invisible-editable-fields>
+    </testmatch-settings>
+
+    <!-- Timeouts -->
+    <client-heartbeat-interval>60</client-heartbeat-interval>
+    <max-heartbeat-interval-before-session-cleanup>240</max-heartbeat-interval-before-session-cleanup>
+    <client-timeout>3600</client-timeout>
+    <server-timeout>3600</server-timeout>
+  </presentation-service>
+</configuration>
