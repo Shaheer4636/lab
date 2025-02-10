@@ -1,60 +1,62 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!-- Standard PS config file for Linux/Docker-based deployments -->
 <configuration>
+
   <!-- Mandatory logging -->
   <logging>
-	  <console>
-  	  <level>trace</level>
-  	  <show-stack-trace>yes</show-stack-trace>
-	  </console>
-	  <file>
-	    <level>trace</level>
-	    <path>/var/log/ps-server-${env:HOSTNAME}.log</path>
-	  </file>
-	  <logger-list>
-	    <logger>
-	      <name>anubex.ps</name>
-	      <level>trace</level>
-	    </logger>	         
-	  </logger-list>
-	</logging>
+    <console>
+      <level>info</level>
+      <show-stack-trace>no</show-stack-trace>
+    </console>
+    <file>
+      <level>trace</level>
+      <path>${RUN_DIR}/log-files/ps-server.log</path>
+    </file>
+    <logger-list>
+      <logger>
+        <name>anubex.ps</name>
+        <level>trace</level>
+      </logger>          
+    </logger-list>
+  </logging>
 
   <presentation-service>
-    <!-- Mandatory ports - must be unique -->
-    <service-management-port>9000</service-management-port>  <!-- To be exposed + mapped: start/stop service -->
-    <http-port>9001</http-port>                              <!-- To be exposed + mapped: admin pages + html client -->
-  
-    <server-root>/etc/config/ps-web-pages</server-root>      <!-- Static pages -->
-
-    <!-- TODO: bug as it appears these two lines need to be present even when using redis -->
-    <process-management-service-address>localhost</process-management-service-address>
-    <process-management-service-port>9003</process-management-service-port>
-    
+    <!--
     <business-tier-interface>redis</business-tier-interface>
-    <redis-host>localhost</redis-host>
-    <redis-port>6379</redis-port>
+    <redis-host>${REDIS_HOST}</redis-host>
+    <redis-port>${REDIS_PORT}</redis-port>
+    -->
+
+    <!-- Mandatory ports - must be unique -->
+    <service-management-port>${PS_PORT}</service-management-port>            <!-- start/stop service -->
+    <http-port>${PS_HTTP_PORT}</http-port>                                   <!-- admin pages + html client -->
+    
+    <server-root>${RUN_DIR}/config-files/ps-web-pages</server-root>          <!-- static pages -->
+
+    <process-management-service-address>${PMS_HOST}</process-management-service-address>
+    <process-management-service-port>${PMS_PORT}</process-management-service-port>
     
     <!-- optional logging -->    
-    <user-activity-log>/var/log/ps-user-activity-${env:HOSTNAME}.log</user-activity-log>
+    <user-activity-log>${RUN_DIR}/log-files/ps-user-activity.log</user-activity-log>
     <user-activity-log-preserve-days>1</user-activity-log-preserve-days>
     <new-user-activity-log-interval-hours>1</new-user-activity-log-interval-hours>
-    <task-log>/var/log/ps-task-${env:HOSTNAME}.log</task-log>
+    <task-log>${RUN_DIR}/log-files/ps-task.log</task-log>
     <task-log-preserve-days>1</task-log-preserve-days>
     <task-log-interval-hours>1</task-log-interval-hours>
-    <performance-statistics-file>/var/log/ps-performance-statistics-${env:HOSTNAME}.log</performance-statistics-file>
+    <performance-statistics-file>${RUN_DIR}/log-files/ps-performance-statistics.log</performance-statistics-file>
     <performance-statistics-output-interval>60</performance-statistics-output-interval>
     <performance-statistics-file-preserve-days>1</performance-statistics-file-preserve-days>
-    <communication-messages-log-file>/var/log/ps-trace-messages-${env:HOSTNAME}.log</communication-messages-log-file>
-    <!-- <trace-directory>/var/log</trace-directory> -->
+    <communication-messages-log-file>${RUN_DIR}/log-files/ps-trace-messages.log</communication-messages-log-file>
+    <trace-directory>${RUN_DIR}/log-files/ps</trace-directory>
 
     <!-- Optional terminal interface -->
     <terminal-interface>
       <protocol>TN3270</protocol>
-      <port>9002</port> <!-- To be exposed + mapped -->
+      <port>${PS_3270_PORT}</port>
       <program-charset>Windows-1252</program-charset>
       <terminal-charset>IBM297</terminal-charset>
       <show-logon-screen>false</show-logon-screen>
-      <logon-template>/etc/config/tn3270-logon.txt</logon-template>
+      <logon-template>${RUN_DIR}/config-files/tn3270-logon.txt</logon-template>
       <logon-template-charset>Windows-1252</logon-template-charset>
       <user-id>terminaluser</user-id>
       <password>terminaluser</password>
@@ -82,7 +84,7 @@
   
     <!-- Optional testmatch recording -->
     <testmatch-settings>
-      <trace-directory>/var/log</trace-directory>
+      <trace-directory>${RUN_DIR}/log-files/ps</trace-directory>
       <log-file></log-file>
       <log-level>DIAGNOSTICS</log-level>
       <encrypt-invisible-editable-fields>false</encrypt-invisible-editable-fields>
