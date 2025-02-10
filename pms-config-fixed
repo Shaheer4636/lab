@@ -11,21 +11,21 @@
     Standard log settings
   -->
   <logging>
-	  <console>
-	    <level>info</level>
-	    <show-stack-trace>no</show-stack-trace>
-	  </console>
-	  <file>
-	    <level>info</level>
-	    <path>${env:RUN_DIR}\log-files\pms-server.log</path>
-	  </file>
-	  <logger-list>
-	    <logger>
-	      <name>anubex.pms</name>
-	      <level>info</level>
-	    </logger>	         
-	  </logger-list>
-	</logging>
+    <console>
+      <level>info</level>
+      <show-stack-trace>no</show-stack-trace>
+    </console>
+    <file>
+      <level>info</level>
+      <path>${env:RUN_DIR}/log-files/pms-server.log</path>
+    </file>
+    <logger-list>
+      <logger>
+        <name>anubex.pms</name>
+        <level>info</level>
+      </logger>         
+    </logger-list>
+  </logging>
 
   <!--
     Host name used when creating the main server port.
@@ -47,7 +47,7 @@
     <request-interface type="buffer">
       <transaction-id-pattern>STARTSESSION|CONTINUESESSION|TERMINATESESSION</transaction-id-pattern>
     </request-interface>
-    <command-line>"${env:RUN_DIR}\scripts\worker-task.bat"</command-line>
+    <command-line>"${env:RUN_DIR}/scripts/worker-task.sh"</command-line>
     <cleanup-command-line></cleanup-command-line>
     <client-timeout>3600000</client-timeout>
     <startup-timeout>10000</startup-timeout>
