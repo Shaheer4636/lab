@@ -1,4 +1,4 @@
-name: Run Terraform Script
+name: Run Terraform Destroy
 
 on:
   workflow_call:
@@ -18,8 +18,8 @@ permissions:
   contents: read
 
 jobs:
-  Run_Terraform:
-    name: Run Terraform
+  Run_Terraform_Destroy:
+    name: Run Terraform Destroy
     runs-on: ubuntu-latest
     environment: ${{ inputs.aws-environment }}
     outputs:
@@ -35,17 +35,17 @@ jobs:
            role-session-name: git-actions-deployment
            aws-region: eu-central-1
 
-      - name: Display prebuild
-        run: echo "${{ inputs.aws-environment }} ${{ vars.REGION }} ${{ inputs.terraform-project }} ${{ inputs.run-mode }}"
+      - name: Display pre-destroy
+        run: echo "${{ inputs.aws-environment }} ${{ vars.REGION }} ${{ inputs.terraform-project }} destroy"
 
-      - name: Run AWS commands
+      - name: Run Terraform Destroy
         run: |
-          ./tf-init.sh ${{ inputs.aws-environment }} ${{ vars.REGION }} ${{ inputs.terraform-project }} ${{ inputs.run-mode }}
+          ./tf-init.sh ${{ inputs.aws-environment }} ${{ vars.REGION }} ${{ inputs.terraform-project }} destroy
 
   Check_Result:
     name: Check Result
     runs-on: ubuntu-latest
-    needs: Run_Terraform
-    #if: contains(needs.Run_Terraform.outputs.result, 'Error')
+    needs: Run_Terraform_Destroy
+    #if: contains(needs.Run_Terraform_Destroy.outputs.result, 'Error')
     steps:
-      - run: echo "${{needs.Run_Terraform.outputs.result}}"
+      - run: echo "${{ needs.Run_Terraform_Destroy.outputs.result }}"
