@@ -1,0 +1,76 @@
+name: 'Manual Deployment to all Environments'
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        type: choice
+        description: AWS region
+        options:
+        - eu-central-1
+        - eu-west-2
+      project:
+        type: choice
+        description: Terraform project to deploy
+        options:
+          - api-gateway
+          - certificates
+          - cloudfront
+          - database/rds/mssqlserver
+          - database/rds/subnet-groups
+          - ec2/db-jumpbox
+          - ec2/db-load-vm
+          - ec2/vm
+          - elastic-beanstalk
+          - elastic-beanstalk/subnet_groups
+          - eventbridge/schedulers
+          - lambdas
+          - permissions/lambda-roles
+          - s3/cicd-destination
+          - s3/project-init
+          - vpc/vpc-endpoints
+          - route53/domain-delegation
+          - route53/application-certificates
+      apply:
+        type: choice
+        description: Run a plan or apply of the Terraform script
+        options:
+        - plan
+        - apply
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  Terraform_Plan:
+    name: Plan
+    uses: ./.github/workflows/workflow-lib-terraform.yml
+    with:
+      aws-environment: dev
+      terraform-project: ${{ inputs.project }}
+      run-mode: plan
+
+  Deploy_to_Lower_Environments:
+    strategy:
+      matrix:
+        aws-environments: [dev, qa]
+    name: Non-prod
+    needs: Terraform_Plan
+    uses: ./.github/workflows/workflow-lib-terraform.yml
+    with:
+      aws-environment:  ${{ matrix.aws-environments }}
+      terraform-project: ${{ inputs.project }}
+      run-mode: apply
+
+  Deploy_to_Prod_Environments:
+    strategy:
+      matrix:
+        aws-environments: [uat, uat2, prod]
+    name: Prod
+    needs: Deploy_to_Lower_Environments
+    uses: ./.github/workflows/workflow-lib-terraform.yml
+    with:
+      aws-environment:  ${{ matrix.aws-environments }}
+      terraform-project: ${{ inputs.project }}
+      run-mode: apply
