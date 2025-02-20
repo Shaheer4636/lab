@@ -1,0 +1,51 @@
+name: Run Terraform Script
+
+on:
+  workflow_call:
+    inputs:
+      aws-environment:
+        required: true
+        type: string
+      terraform-project:
+        required: true
+        type: string
+      run-mode:
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  Run_Terraform:
+    name: Run Terraform
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.aws-environment }}
+    outputs:
+      result: ${{ join(steps.*.conclusion) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT }}:role/github-actions-role
+           role-session-name: git-actions-deployment
+           aws-region: eu-central-1
+
+      - name: Display prebuild
+        run: echo "${{ inputs.aws-environment }} ${{ vars.REGION }} ${{ inputs.terraform-project }} ${{ inputs.run-mode }}"
+
+      - name: Run AWS commands
+        run: |
+          ./tf-init.sh ${{ inputs.aws-environment }} ${{ vars.REGION }} ${{ inputs.terraform-project }} ${{ inputs.run-mode }}
+
+  Check_Result:
+    name: Check Result
+    runs-on: ubuntu-latest
+    needs: Run_Terraform
+    #if: contains(needs.Run_Terraform.outputs.result, 'Error')
+    steps:
+      - run: echo "${{needs.Run_Terraform.outputs.result}}"
