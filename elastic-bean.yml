@@ -1,0 +1,53 @@
+name: Deploy Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'elastic-beanstalk/**'
+
+  pull_request:
+    branches: ["*"]
+    paths:
+      - 'elastic-beanstalk/**'
+
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  Terraform_Plan:
+    name: Plan
+    uses: ./.github/workflows/workflow-lib-terraform.yml
+    with:
+      aws-environment: dev
+      terraform-project: elastic-beanstalk
+      run-mode: plan
+
+  Deploy_to_Lower_Environments:
+    strategy:
+      matrix:
+        aws-environments: [dev, qa]
+    if: ${{ github.event_name == 'push' }}
+    name: Non-prod
+    needs: Terraform_Plan
+    uses: ./.github/workflows/workflow-lib-terraform.yml
+    with:
+      aws-environment:  ${{ matrix.aws-environments }}
+      terraform-project: elastic-beanstalk
+      run-mode: apply
+
+  Deploy_to_Prod_Environments:
+    strategy:
+      matrix:
+        aws-environments: [uat, uat2, prod]
+    if: ${{ github.event_name == 'push' }}
+    name: Prod
+    needs: Deploy_to_Lower_Environments
+    uses: ./.github/workflows/workflow-lib-terraform.yml
+    with:
+      aws-environment:  ${{ matrix.aws-environments }}
+      terraform-project: elastic-beanstalk
+      run-mode: apply
