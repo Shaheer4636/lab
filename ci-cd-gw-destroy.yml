@@ -1,14 +1,28 @@
 name: Destroy API Gateway
 
 on:
-  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+  push:
+    branches:
+      - develop
+      - terraform-destroy
+    paths:
+      - 'api-gateway/**'
 
+  pull_request:
+    branches: ["*"]
+    paths:
+      - 'api-gateway/**'
 permissions:
   id-token: write
   contents: read
 
 jobs:
   Terraform_Plan_Destroy:
+    name: Plan Destroy
+    runs-on: ubuntu-latest
+    steps:
+    with:
+      terraform_version: 1.5.7 
     name: Plan Destroy
     uses: ./.github/workflows/workflow-lib-terraform.yml
     with:
