@@ -1,0 +1,44 @@
+name: Destroy Lambdas
+
+on:
+  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  terraform-project: lambdas
+
+jobs:
+  Terraform_Plan_Destroy:
+    name: Plan Destroy
+    uses: ./.github/workflows/workflow-lib-terraform.yml
+    with:
+      aws-environment: dev
+      terraform-project: lambdas
+      run-mode: plan
+
+  Destroy_Lower_Environments:
+    strategy:
+      matrix:
+        aws-environments: [dev, qa]
+    name: Destroy Non-Prod
+    needs: Terraform_Plan_Destroy
+    uses: ./.github/workflows/workflow-lib-terraform.yml
+    with:
+      aws-environment: ${{ matrix.aws-environments }}
+      terraform-project: lambdas
+      run-mode: destroy
+
+  Destroy_Prod_Environments:
+    strategy:
+      matrix:
+        aws-environments: [uat, uat2, prod]
+    name: Destroy Prod
+    needs: Destroy_Lower_Environments
+    uses: ./.github/workflows/workflow-lib-terraform.yml
+    with:
+      aws-environment: ${{ matrix.aws-environments }}
+      terraform-project: lambdas
+      run-mode: destroy
