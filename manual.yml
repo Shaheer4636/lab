@@ -1,0 +1,75 @@
+name: 'Manual Deployment'
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        type: choice
+        description: AWS region
+        options:
+        - eu-central-1
+        - eu-west-2
+      environment:
+        type: environment
+      project:
+        type: choice
+        description: Terraform project to deploy
+        options:
+          - api-gateway
+          - certificates
+          - cloudfront
+          - database/rds/mssqlserver
+          - database/rds/subnet-groups
+          - ec2/db-jumpbox
+          - ec2/db-load-vm
+          - elastic-beanstalk
+          - elastic-beanstalk/subnet_groups
+          - lambdas
+          - permissions/lambda-roles
+          - s3/cicd-destination
+          - s3/project-init
+          - vpc/vpc-endpoints
+          - route53/domain-delegation
+          - route53/application-certificates
+      apply:
+        type: choice
+        description: Run a plan or apply of the Terraform script
+        options:
+        - plan
+        - apply
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  initial:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+    - name: Deploying ${{ github.event.inputs.project }} to ${{ github.event.inputs.environment }}
+      run: echo "region - '${{ github.event.inputs.region }}';  environment - '${{ github.event.inputs.environment }}' mode - '${{ github.event.inputs.apply }}'"
+
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+    - name: Deploying ${{ github.event.inputs.project }} to ${{ github.event.inputs.environment }}
+      run: |
+        echo "${{ github.event.inputs.environment }}"
+        echo "region - '${{ github.event.inputs.region }}';  environment - '${{ github.event.inputs.environment }}' mode - '${{ github.event.inputs.apply }}'"
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Prod Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+         role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT }}:role/github-actions-role"
+         role-session-name: git-actions-deployment
+         aws-region: ${{ github.event.inputs.region }}
+
+    - name: Run AWS Commands
+      run: |
+        echo "Running deployment script"
+        ./tf-init.sh ${{ github.event.inputs.environment }} ${{ github.event.inputs.region }} ${{ github.event.inputs.project }} ${{ github.event.inputs.apply }}manual
