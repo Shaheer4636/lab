@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Registration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        form {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <form id="studentForm">
+        <h2>Register Student</h2>
+        <input type="text" id="name" placeholder="Enter Name" required>
+        <input type="text" id="class_name" placeholder="Enter Class" required>
+        <input type="text" id="degree" placeholder="Enter Degree" required>
+        <button type="submit">Submit</button>
+        <p id="responseMessage"></p>
+    </form>
+
+    <script>
+        document.getElementById("studentForm").addEventListener("submit", async function(event) {
+            event.preventDefault(); // Prevent page reload
+
+            let studentData = {
+                name: document.getElementById("name").value,
+                class_name: document.getElementById("class_name").value,
+                degree: document.getElementById("degree").value
+            };
+
+            try {
+                let response = await fetch("http://localhost:8000/add-student", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(studentData)
+                });
+
+                let result = await response.json();
+                document.getElementById("responseMessage").innerText = result.message || "Error occurred";
+                document.getElementById("responseMessage").style.color = response.ok ? "green" : "red";
+            } catch (error) {
+                document.getElementById("responseMessage").innerText = "Server error!";
+                document.getElementById("responseMessage").style.color = "red";
+            }
+        });
+    </script>
+
+</body>
+</html>

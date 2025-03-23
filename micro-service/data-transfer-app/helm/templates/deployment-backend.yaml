@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: mydata-app
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: {{ .Values.image.backend }}
+          ports:
+            - containerPort: {{ .Values.service.backend.port }}
+          env:
+            - name: MSSQL_HOST
+              value: "{{ .Values.env.MSSQL_HOST }}"
+            - name: MSSQL_PORT
+              value: "{{ .Values.env.MSSQL_PORT }}"
+            - name: MSSQL_USER
+              value: "{{ .Values.env.MSSQL_USER }}"
+            - name: MSSQL_PASSWORD
+              value: "{{ .Values.env.MSSQL_PASSWORD }}"
+            - name: MSSQL_DATABASE
+              value: "{{ .Values.env.MSSQL_DATABASE }}"

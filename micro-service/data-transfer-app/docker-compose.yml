@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  backend:
+    image: backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - MSSQL_HOST=mssql
+      - MSSQL_PORT=1433
+      - MSSQL_USER=sa
+      - MSSQL_PASSWORD=Admin@123
+      - MSSQL_DATABASE=student_db
+    depends_on:
+      mssql:
+        condition: service_healthy  # Ensure MSSQL is ready
+    restart: always
+
+  frontend:
+    image: frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy  # Ensure backend is ready
+    restart: always
+
+  data-fetch:
+    image: datafetch:latest
+    build:
+      context: ./data-fetch
+      dockerfile: Dockerfile
+    ports:
+      - "90:90"
+    environment:
+      - MSSQL_HOST=mssql
+      - MSSQL_PORT=1433
+      - MSSQL_USER=sa
+      - MSSQL_PASSWORD=Admin@123
+      - MSSQL_DATABASE=student_db
+    depends_on:
+      mssql:
+        condition: service_healthy  # Ensure MSSQL is ready
+    restart: always
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: mssql_container
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Admin@123
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+    restart: always
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "Admin@123", "-Q", "SELECT 1"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  mssql_data:

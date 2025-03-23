@@ -1,0 +1,6 @@
+mysql-connector-python  # If you're using MySQL
+fastapi
+uvicorn
+pyodbc
+
+

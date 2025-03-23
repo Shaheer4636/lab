@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mssql
+  namespace: mydata-app
+spec:
+  type: {{ .Values.service.mssql.type }}
+  selector:
+    app: mssql
+  ports:
+    - protocol: TCP
+      port: {{ .Values.service.mssql.port }}
+      targetPort: {{ .Values.service.mssql.port }}

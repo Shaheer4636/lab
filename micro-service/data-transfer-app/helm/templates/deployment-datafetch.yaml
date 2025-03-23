@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datafetch
+  namespace: mydata-app
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: datafetch
+  template:
+    metadata:
+      labels:
+        app: datafetch
+    spec:
+      containers:
+        - name: datafetch
+          image: {{ .Values.image.datafetch }}
+          ports:
+            - containerPort: {{ .Values.service.datafetch.port }}
+          env:
+            - name: MSSQL_HOST
+              value: "{{ .Values.env.MSSQL_HOST }}"
+            - name: MSSQL_PORT
+              value: "{{ .Values.env.MSSQL_PORT }}"
+            - name: MSSQL_USER
+              value: "{{ .Values.env.MSSQL_USER }}"
+            - name: MSSQL_PASSWORD
+              value: "{{ .Values.env.MSSQL_PASSWORD }}"
+            - name: MSSQL_DATABASE
+              value: "{{ .Values.env.MSSQL_DATABASE }}"

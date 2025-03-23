@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: my-pv
+spec:
+  capacity:
+    storage: 1Gi  # Size of the volume
+  accessModes:
+    - ReadWriteOnce  # Only one node can mount it at a time
+  persistentVolumeReclaimPolicy: Retain  # Keeps data after PVC is deleted
+  hostPath:
+    path: "/mnt/data"  # Local storage on the node

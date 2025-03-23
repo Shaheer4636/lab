@@ -1,0 +1,28 @@
+replicaCount: 1
+
+image:
+  backend: shaheer4636/backend-public:v1
+  frontend: shaheer4636/frontend-public:v1
+  datafetch: shaheer4636/datafetch-public:v1
+  mssql: mcr.microsoft.com/mssql/server:2022-latest
+
+service:
+  backend:
+    type: ClusterIP
+    port: 8000
+  frontend:
+    type: LoadBalancer
+    port: 80
+  datafetch:
+    type: ClusterIP
+    port: 90
+  mssql:
+    type: ClusterIP
+    port: 1433
+
+env:
+  MSSQL_HOST: "mssql"
+  MSSQL_PORT: "1433"
+  MSSQL_USER: "sa"
+  MSSQL_PASSWORD: "Admin@123"
+  MSSQL_DATABASE: "student_db"

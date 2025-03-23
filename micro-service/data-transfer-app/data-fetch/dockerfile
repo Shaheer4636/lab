@@ -1,0 +1,34 @@
+FROM python:3.10
+
+# Install required packages and dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    unixodbc \
+    unixodbc-dev \
+    odbcinst \
+    libodbc1 \
+    build-essential \
+    apt-transport-https \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Microsoft ODBC Driver 17 for SQL Server
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    echo "deb [arch=amd64] https://packages.microsoft.com/debian/10/prod buster main" > /etc/apt/sources.list.d/mssql-release.list && \
+    apt-get update && \
+    ACCEPT_EULA=Y apt-get install -y msodbcsql17 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Set work directory
+WORKDIR /app
+
+# Copy application files
+COPY . .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expose application port
+EXPOSE 90
+
+# Run the FastAPI application
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "90"]

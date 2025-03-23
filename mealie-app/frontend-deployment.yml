@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alpine-frontend
+  namespace: frontend
+spec:
+  replicas: 2  # Adjust replicas as needed
+  selector:
+    matchLabels:
+      app: alpine-frontend
+  template:
+    metadata:
+      labels:
+        app: alpine-frontend
+    spec:
+      containers:
+        - name: alpine
+          image: alpine
+          ports:
+            - containerPort: 80
+  strategy:
+    type: RollingUpdate 
+    rollingUpdate:
+      maxUnavailable: 1 
+      maxSurge: 1
