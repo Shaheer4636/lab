@@ -4,10 +4,12 @@
   <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/docker/docker-original.svg" alt="Docker" width="80" height="80"/>
   <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/kubernetes/kubernetes-plain.svg" alt="Kubernetes" width="80" height="80"/>
   <img src="https://istio.io/latest/favicons/android-chrome-192x192.png" alt="Istio" width="80" height="80"/>
-  <img src="https://cdn.worldvectorlogo.com/logos/ingress-2.svg" alt="Ingress" width="80" height="80"/>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Ingress_Nginx_Logo.svg/512px-Ingress_Nginx_Logo.svg.png" alt="Ingress" width="80" height="80"/>
   <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/amazonwebservices/amazonwebservices-original.svg" alt="AWS" width="80" height="80"/>
   <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/azure/azure-original.svg" alt="Azure" width="80" height="80"/>
   <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/linux/linux-original.svg" alt="Linux" width="80" height="80"/>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Prometheus_software_logo.svg/512px-Prometheus_software_logo.svg.png" alt="Prometheus" width="80" height="80"/>
+  <img src="https://landscape.cncf.io/logos/cncf-landscape/horizontal/color/cncf-landscape-horizontal-color.svg" alt="CNCF" width="160" height="80"/>
 </p>
 
 This is my personal lab repository, primarily built with **YAML (70%)**, to:
@@ -33,6 +35,12 @@ This is my personal lab repository, primarily built with **YAML (70%)**, to:
 ### Serverless & Cloud Functions  
 - **AWS Lambda Functions** – Various Lambda functions for different use cases.  
 - **Lambda Layers** – Shared libraries for Lambda functions.  
+
+### Monitoring & Observability  
+- **Prometheus** – Monitoring and alerting setup for applications.  
+
+### Cloud-Native & CNCF  
+- **CNCF Projects** – Exploring cloud-native projects and best practices.  
 
 ### Microservices  
 - **Microservices Architecture** – Code and configurations for microservices-based applications.  
