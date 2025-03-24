@@ -1,6 +1,16 @@
-# Personal Lab
+# Personal Lab  
 
-This is my personal lab repository, primarily built with **yaml (70%)**, to:
+<p align="center">
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/docker/docker-original.svg" alt="Docker" width="80" height="80"/>
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/kubernetes/kubernetes-plain.svg" alt="Kubernetes" width="80" height="80"/>
+  <img src="https://istio.io/latest/favicons/android-chrome-192x192.png" alt="Istio" width="80" height="80"/>
+  <img src="https://cdn.worldvectorlogo.com/logos/ingress-2.svg" alt="Ingress" width="80" height="80"/>
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/amazonwebservices/amazonwebservices-original.svg" alt="AWS" width="80" height="80"/>
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/azure/azure-original.svg" alt="Azure" width="80" height="80"/>
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/linux/linux-original.svg" alt="Linux" width="80" height="80"/>
+</p>
+
+This is my personal lab repository, primarily built with **YAML (70%)**, to:
 
 - Keep a backup of my learning  
 - Share knowledge and best practices  
