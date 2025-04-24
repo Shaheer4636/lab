@@ -1,0 +1,110 @@
+
+# Documentation: Investigation and Monitoring Setup for S3 Mount
+
+## 1. Objective
+
+To identify how S3 is mounted on Spinnaker-deployed systems, verify that it is functional, and implement basic monitoring to ensure availability of the mount.
+
+## 2. Initial Verification of S3 Mount Presence
+
+**Command Used:**
+```
+mount | grep s3
+```
+
+**Output:**
+```
+mountpoint-s3 on /mnt/buyspeed-arkansas-stage type fuse (rw,nosuid,nodev,noatime,...)
+```
+
+**Result:**
+Verified that the mount `/mnt/buyspeed-arkansas-stage` is active and uses `mountpoint-s3`.
+
+## 3. Locating the Mount Tool
+
+**Exploration Path:**
+```
+cd /opt/aws/mountpoint-s3/bin
+```
+
+**File Found:**
+```
+mount-s3  (binary executable)
+```
+
+This confirms the use of AWS's Mountpoint for S3 tool instead of s3fs.
+
+**Process Verification:**
+```
+ps aux | grep mount-s3
+```
+
+**Result:**
+```
+mount-s3 --allow-delete buyspeed-arkansas-stage /mnt/buyspeed-arkansas-stage
+```
+
+## 4. Checking for Spinnaker Integration
+
+**Path:**
+```
+/opt/spinnaker/spinnaker-identity.sh
+```
+
+**Content:**
+```
+AUTOSCALINGGROUP_NAME=epro-arkansas-stage-v007
+APPLICATION=epro
+STACK=arkansas
+SERVER_GROUP_VERSION=stage
+AWS_REGION=us-west-2
+```
+
+Confirms Spinnaker management and environment details.
+
+## 5. Testing S3 Functionality
+
+**Test File Creation:**
+```
+echo "hello" > /mnt/buyspeed-arkansas-stage/test-check.txt
+```
+
+**Verify via CLI:**
+```
+aws s3 ls s3://buyspeed-arkansas-stage/
+```
+
+**Verify in AWS Console:**
+Initially delayed visibility, later confirmed in us-west-2 tab.
+
+## 6. Monitoring Script
+
+**Script Path:**
+```
+/usr/local/bin/check_s3_mount.sh
+```
+
+**Functionality:**
+- Checks if `mount-s3` process is running
+- Verifies read/write access
+- Logs to `/var/log/s3_mount_monitor.log`
+
+**Cron Job:**
+```
+*/5 * * * * /usr/local/bin/check_s3_mount.sh
+```
+
+## 7. Directory Structure Summary
+
+| Path                                      | Description                |
+|-------------------------------------------|----------------------------|
+| /mnt/buyspeed-arkansas-stage              | S3 mount point             |
+| /opt/aws/mountpoint-s3/bin/mount-s3       | Mountpoint binary          |
+| /opt/spinnaker/spinnaker-identity.sh      | Spinnaker metadata         |
+| /usr/local/bin/check_s3_mount.sh          | Monitoring script          |
+| /var/log/s3_mount_monitor.log             | Log file for checks        |
+
+## 8. Conclusion
+
+We successfully traced the use of AWS Mountpoint for S3, validated access and write capability, and implemented a monitoring script to ensure availability. The mount is confirmed functional and being checked regularly.
+
