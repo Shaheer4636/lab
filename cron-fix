@@ -1,4 +1,2 @@
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%cpu | grep check_s3_mount.sh | grep -v grep
 
-* * * * * root /bin/bash /usr/local/bin/check_s3_mount.sh >> /tmp/cron_debug.log 2>&1
