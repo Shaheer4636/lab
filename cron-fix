@@ -6,3 +6,5 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 sudo systemctl restart crond
 sleep 90
 cat /tmp/cron_debug.log
+
+* * * * * root /bin/bash /usr/local/bin/check_s3_mount.sh >> /tmp/cron_debug.log 2>&1
