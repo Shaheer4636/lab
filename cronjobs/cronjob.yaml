@@ -1,0 +1,32 @@
+stages:
+  - deploy
+
+variables:
+  TARGET_SERVER: "ec2-user@your-ec2-instance-public-ip"
+  SSH_PRIVATE_KEY: $DEPLOY_SSH_KEY # Stored in GitLab CI/CD secrets
+  AWS_REGION: "us-east-1"
+
+before_script:
+  - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+  - eval $(ssh-agent -s)
+  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - ssh-keyscan -H your-ec2-instance-public-ip >> ~/.ssh/known_hosts
+
+deploy_monitoring:
+  stage: deploy
+  script:
+    - echo "Deploying monitoring scripts..."
+    - ssh $TARGET_SERVER "sudo mkdir -p /usr/local/bin/"
+    - scp scripts/check_s3_mount.sh $TARGET_SERVER:/tmp/
+    - scp scripts/amazon-cloudwatch-agent.json $TARGET_SERVER:/tmp/
+    - scp scripts/s3mount.cron $TARGET_SERVER:/tmp/
+    - ssh $TARGET_SERVER "sudo mv /tmp/check_s3_mount.sh /usr/local/bin/ && sudo chmod +x /usr/local/bin/check_s3_mount.sh"
+    - ssh $TARGET_SERVER "sudo mv /tmp/amazon-cloudwatch-agent.json /etc/amazon-cloudwatch-agent.json"
+    - ssh $TARGET_SERVER "sudo mv /tmp/s3mount.cron /etc/cron.d/s3mount && sudo chmod 644 /etc/cron.d/s3mount"
+    - ssh $TARGET_SERVER "sudo yum install -y amazon-cloudwatch-agent || true"
+    - ssh $TARGET_SERVER "sudo systemctl restart crond"
+    - ssh $TARGET_SERVER "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a append-config -m ec2 -c file:/etc/amazon-cloudwatch-agent.json -s"
+  only:
+    - main
