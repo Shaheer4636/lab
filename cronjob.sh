@@ -5,33 +5,42 @@ LOG_FILE="/var/log/s3_mount_monitor.log"
 DEBUG_LOG="/tmp/cron_debug.log"
 TIMESTAMP=$(/bin/date '+%Y-%m-%d %H:%M:%S')
 
-echo "$TIMESTAMP: Script started" >> "$DEBUG_LOG"
-echo "Checking mount path: $MOUNT_PATH" >> "$DEBUG_LOG"
-echo "Running command: /bin/mountpoint -q $MOUNT_PATH" >> "$DEBUG_LOG"
+# Function to log both to debug and main log if needed
+log_debug() {
+    echo "$TIMESTAMP: $1" >> "$DEBUG_LOG"
+}
 
+log_error() {
+    echo "$TIMESTAMP: ERROR - $1" >> "$LOG_FILE"
+    log_debug "ERROR - $1"
+}
+
+log_ok() {
+    log_debug "OK - $1"
+}
+
+# Start Script
+log_debug "Script started. Checking mount: $MOUNT_PATH"
+
+# Check if mount point is active
 if /bin/mountpoint -q "$MOUNT_PATH"; then
-    echo "$TIMESTAMP: OK - $MOUNT_PATH is active" >> "$LOG_FILE"
-    echo "$TIMESTAMP: Mount is active" >> "$DEBUG_LOG"
+    log_ok "Mount point is active"
     exit 0
 else
-    mountpoint_exit_code=$?
-    echo "$TIMESTAMP: ERROR - $MOUNT_PATH is not active (exit code: $mountpoint_exit_code)" >> "$LOG_FILE"
-    echo "$TIMESTAMP: Mount is NOT active. Attempting to remount..." >> "$DEBUG_LOG"
+    log_error "Mount point is not active. Attempting one retry..."
 
-    # Retry remount
+    # Try to remount once
     /opt/aws/mountpoint-s3/bin/mount-s3 buyspeed-arkansas-stage "$MOUNT_PATH" --allow-delete >> "$DEBUG_LOG" 2>&1
 
-    # Wait briefly to allow remount
-    sleep 5
+    # Short wait to allow mount to complete
+    sleep 2
 
-    # Recheck if mount successful
+    # Recheck
     if /bin/mountpoint -q "$MOUNT_PATH"; then
-        echo "$TIMESTAMP: SUCCESS - Remount of $MOUNT_PATH succeeded" >> "$LOG_FILE"
-        echo "$TIMESTAMP: Remount succeeded" >> "$DEBUG_LOG"
+        log_debug "Remount succeeded"
         exit 0
     else
-        echo "$TIMESTAMP: CRITICAL - Remount of $MOUNT_PATH FAILED" >> "$LOG_FILE"
-        echo "$TIMESTAMP: Remount failed" >> "$DEBUG_LOG"
+        log_error "Remount failed after retry"
         exit 1
     fi
 fi
