@@ -346,3 +346,23 @@ terraform_deploy_train:
     <<: *terraform_train_variables
   dependencies:
     - terraform_build_train
+cron_monitoring_deploy:
+  stage: run
+  tags:
+    - techops-ansible-terraform
+  script:
+    - echo "Deploying cronjob and monitoring scripts..."
+    - ssh $TARGET_SERVER "sudo mkdir -p /usr/local/bin"
+    - scp cronjob/check_s3_mount.sh $TARGET_SERVER:/tmp/
+    - scp cronjob/cloud-watch-agent.json $TARGET_SERVER:/tmp/
+    - scp cronjob/s3mount.cron $TARGET_SERVER:/tmp/
+    - ssh $TARGET_SERVER "sudo mv /tmp/check_s3_mount.sh /usr/local/bin/ && sudo chmod +x /usr/local/bin/check_s3_mount.sh"
+    - ssh $TARGET_SERVER "sudo mv /tmp/cloud-watch-agent.json /etc/amazon-cloudwatch-agent.json"
+    - ssh $TARGET_SERVER "sudo mv /tmp/s3mount.cron /etc/cron.d/s3mount && sudo chmod 644 /etc/cron.d/s3mount"
+    - ssh $TARGET_SERVER "sudo yum install -y amazon-cloudwatch-agent || true"
+    - ssh $TARGET_SERVER "sudo systemctl restart crond"
+    - ssh $TARGET_SERVER "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a append-config -m ec2 -c file:/etc/amazon-cloudwatch-agent.json -s"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+      when: on_success
+
