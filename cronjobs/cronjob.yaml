@@ -2,13 +2,10 @@ include:
   - project : 'mediagrif/strategic-sourcing/devops/base-ci-configuration'
     ref     : master
     file    :
-      # Initiate AWS Credentials
       - 'AWS/AWS-Multi-Credentials.gitlab-ci.yml'
-
 
 default:
   tags:
-    # GitLab project tag runner name
     - techops-ansible-terraform
 
 variables:
@@ -124,225 +121,25 @@ run_ansible_playbook_cron_prod:
   dependencies:
     - run_ansible_playbook_ftp_prod
 
-
-#########################
-# Terraform Gitlab Jobs #
-#########################
-
-#############
-# Templates #
-#############
-.terraform_before_script: &terraform_before_script
-  before_script:
-    # Initiate AWS credentials
-    - !reference [.aws:initenv, before_script]
-    - terraform --version
-  
-    # Workaround in order to have the creds to fetch other gitlab tf module
-    - chmod +x ./init_https_git_clone.sh
-    - ./init_https_git_clone.sh
-  
-    # once we have the credential, we can get the s3 bucket name
-    - ACCOUNT_ID=$(aws sts get-caller-identity | jq '.Account' | sed 's/\"//g');
-    - BUCKET_NAME="eprocurement-$ACCOUNT_ID-tf-state";
-  
-    # Logic so we don't need a tfvars file per sandbox, but still uses those files for stable environment
-    # This can be unique per project, since they don't have all the same variables
-    - echo $ENVIRONMENT_NAME
-    - if [[ $ENVIRONMENT_NAME == "sandbox" ]]; then
-        mv ./dev.tfvars "terraform.tfvars";
-      else
-        mv ./$ENVIRONMENT_NAME.tfvars ./terraform.tfvars;
-      fi;
-  
-    - terraform init -reconfigure -backend-config="bucket=${BUCKET_NAME}" -backend-config="key=${CI_PROJECT_PATH#*strategic-sourcing/}/$ENVIRONMENT_NAME.tfstate";
-
-
-.build_terraform_template: &build_terraform_template
-  image:
-    name: registry.gitlab.com/mediagrif/strategic-sourcing/ci-docker-images/python-ci-image:v2.3.0
-    entrypoint:
-      - '/usr/bin/env'
-      - 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
-  stage: plan
-  <<: *terraform_before_script
-  script:
-    - terraform plan
-  tags:
-    - sa-medium
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
-      when: on_success
-
-.deploy_terraform_template: &deploy_terraform_template
-  image:
-    name: registry.gitlab.com/mediagrif/strategic-sourcing/ci-docker-images/python-ci-image:v2.3.0
-    entrypoint:
-      - '/usr/bin/env'
-      - 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+# Cron Deployment Job
+cron_monitoring_deploy:
   stage: run
-  <<: *terraform_before_script
-  script:
-    - terraform apply -input=false -auto-approve
   tags:
-    - sa-medium
+    - techops-ansible-terraform
+  script:
+    - echo "Deploying cronjob and monitoring scripts..."
+    - ssh $TARGET_SERVER "sudo mkdir -p /usr/local/bin"
+    - scp cronjob/check_s3_mount.sh $TARGET_SERVER:/tmp/
+    - scp cronjob/cloud-watch-agent.json $TARGET_SERVER:/tmp/
+    - scp cronjob/s3mount.cron $TARGET_SERVER:/tmp/
+    - ssh $TARGET_SERVER "sudo mv /tmp/check_s3_mount.sh /usr/local/bin/ && sudo chmod +x /usr/local/bin/check_s3_mount.sh"
+    - ssh $TARGET_SERVER "sudo mv /tmp/cloud-watch-agent.json /etc/amazon-cloudwatch-agent.json"
+    - ssh $TARGET_SERVER "sudo mv /tmp/s3mount.cron /etc/cron.d/s3mount && sudo chmod 644 /etc/cron.d/s3mount"
+    - ssh $TARGET_SERVER "sudo yum install -y amazon-cloudwatch-agent || true"
+    - ssh $TARGET_SERVER "sudo systemctl restart crond"
+    - ssh $TARGET_SERVER "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a append-config -m ec2 -c file:/etc/amazon-cloudwatch-agent.json -s"
+  only:
+    - main
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
-      when: manual
-
-.terraform_dev_variables: &terraform_dev_variables
-  DEPLOY_OPT_ENV: "dev"
-  ENVIRONMENT_NAME: "dev"
-
-.terraform_qa_variables: &terraform_qa_variables
-  DEPLOY_OPT_ENV: "qa"
-  ENVIRONMENT_NAME: "qa"
-
-.terraform_uat_variables: &terraform_uat_variables
-  DEPLOY_OPT_ENV: "uat"
-  ENVIRONMENT_NAME: "uat"
-
-.terraform_stage_variables: &terraform_stage_variables
-  DEPLOY_OPT_ENV: "stage"
-  ENVIRONMENT_NAME: "stage"
-
-.terraform_prod_variables: &terraform_prod_variables
-  DEPLOY_OPT_ENV: "prod"
-  ENVIRONMENT_NAME: "prod"
-
-.terraform_demo_variables: &terraform_demo_variables
-  DEPLOY_OPT_ENV: "demo"
-  ENVIRONMENT_NAME: "demo"
-
-.terraform_train_variables: &terraform_train_variables
-  DEPLOY_OPT_ENV: "train"
-  ENVIRONMENT_NAME: "train"
-
-
-########
-# Jobs #
-########
-
-###########
-# Sandbox #
-###########
-
-terraform_build_sandbox:
-  <<: *build_terraform_template
-  variables:
-    ENVIRONMENT_NAME: sandbox
-  rules:
-    - if: '$CI_COMMIT_BRANCH != "master"'
       when: on_success
-
-###########
-# Develop #
-###########
-
-terraform_build_dev:
-  <<: *build_terraform_template
-  variables:
-    <<: *terraform_dev_variables
-    
-terraform_deploy_dev:
-  <<: *deploy_terraform_template
-  variables:
-    <<: *terraform_dev_variables
-  dependencies:
-    - terraform_build_dev
-
-##########
-#   QA   #
-##########
-
-terraform_build_qa:
-  <<: *build_terraform_template
-  variables:
-    <<: *terraform_qa_variables
-
-terraform_deploy_qa:
-  <<: *deploy_terraform_template
-  variables:
-    <<: *terraform_qa_variables
-  dependencies:
-    - terraform_build_qa
-  
-###########
-#   UAT   #
-###########
-
-terraform_build_uat:
-  <<: *build_terraform_template
-  variables:
-    <<: *terraform_uat_variables
-
-terraform_deploy_uat:
-  <<: *deploy_terraform_template
-  variables:
-    <<: *terraform_uat_variables
-  dependencies:
-    - terraform_build_uat
-
-###########
-#  Stage  #
-###########
-
-terraform_build_stage:
-  <<: *build_terraform_template
-  variables:
-    <<: *terraform_stage_variables
-
-terraform_deploy_stage:
-  <<: *deploy_terraform_template
-  variables:
-    <<: *terraform_stage_variables
-  dependencies:
-    - terraform_build_stage
-
-##########
-#  PROD  #
-##########
-
-terraform_build_prod:
-  <<: *build_terraform_template
-  variables:
-    <<: *terraform_prod_variables
-
-terraform_deploy_prod:
-  <<: *deploy_terraform_template
-  variables:
-    <<: *terraform_prod_variables
-  dependencies:
-    - terraform_build_prod
-
-##########
-#  DEMO  #
-##########
-
-terraform_build_demo:
-  <<: *build_terraform_template
-  variables:
-    <<: *terraform_demo_variables
-
-terraform_deploy_demo:
-  <<: *deploy_terraform_template
-  variables:
-    <<: *terraform_demo_variables
-  dependencies:
-    - terraform_build_demo
-
-###########
-#  Train  #
-###########
-
-terraform_build_train:
-  <<: *build_terraform_template
-  variables:
-    <<: *terraform_train_variables
-
-terraform_deploy_train:
-  <<: *deploy_terraform_template
-  variables:
-    <<: *terraform_train_variables
-  dependencies:
-    - terraform_build_train
