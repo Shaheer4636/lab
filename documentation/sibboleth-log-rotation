@@ -1,22 +1,4 @@
-Here is your entire prompt properly converted into a **single, clean `.md` Markdown file** — with all nested markdown escaped correctly for actual use:
-
----
-
-```markdown
 # Shibboleth SP Logging and Log Rotation Configuration
-
-## Overview
-
-This document outlines the steps taken to optimize and control logging for the Shibboleth Service Provider (SP) running on Apache (`httpd`) in our CentOS 7 environment.
-
-## Environment
-
-- **Shibboleth SP Version:** 3.5.0-2.el7.x86_64  
-- **OS:** CentOS 7  
-- **Frontend:** Apache HTTP Server (`httpd`)  
-- **Log Location:** `/var/log/httpd/`
-
----
 
 ## 1. Logging Level Validation
 
@@ -83,19 +65,4 @@ ls -lh /var/log/httpd/
 
 ---
 
-## 4. Next Steps (Optional Enhancements)
 
-- Add monitoring to alert if logs are not rotated weekly (e.g., using a cron script or Prometheus + alert rule).
-- Archive critical logs to S3 or a centralized log server before rotation, if audit retention is required.
-
----
-
-## Last Updated
-
-**Date:** April 30, 2025  
-**By:** Samuel B.
-```
-
----
-
-Would you like me to export this as a downloadable `.md` or `.pdf` file?
