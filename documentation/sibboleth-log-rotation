@@ -1,0 +1,101 @@
+Here is your entire prompt properly converted into a **single, clean `.md` Markdown file** — with all nested markdown escaped correctly for actual use:
+
+---
+
+```markdown
+# Shibboleth SP Logging and Log Rotation Configuration
+
+## Overview
+
+This document outlines the steps taken to optimize and control logging for the Shibboleth Service Provider (SP) running on Apache (`httpd`) in our CentOS 7 environment.
+
+## Environment
+
+- **Shibboleth SP Version:** 3.5.0-2.el7.x86_64  
+- **OS:** CentOS 7  
+- **Frontend:** Apache HTTP Server (`httpd`)  
+- **Log Location:** `/var/log/httpd/`
+
+---
+
+## 1. Logging Level Validation
+
+The Shibboleth SP uses `log4shib` for logging configuration, located in:
+
+```
+/etc/shibboleth/shibd.logger
+```
+
+### Current Configuration:
+
+```
+log4j.rootCategory=INFO, shibd_log
+```
+
+This confirms logging is set to `INFO` — a suitable level for production environments.
+
+---
+
+## 2. Log Rotation Policy
+
+Shibboleth SP logs via Apache, and the rotation is handled through logrotate using:
+
+```
+/etc/logrotate.d/httpd
+```
+
+### Updated Logrotate Configuration:
+
+```
+/var/log/httpd/*log {
+    weekly
+    rotate 1
+    missingok
+    notifempty
+    sharedscripts
+    compress
+    delaycompress
+    postrotate
+        /bin/systemctl reload httpd.service > /dev/null 2>/dev/null || true
+    endscript
+}
+```
+
+### Key Details:
+- `weekly`: Rotates logs every 7 days.
+- `rotate 1`: Keeps only **one** rotated log (1 week retention).
+- `compress`: Saves space by compressing old logs.
+- `postrotate`: Reloads Apache to ensure it starts logging to a fresh file.
+
+---
+
+## 3. Verification Steps
+
+### To Manually Trigger Rotation:
+```
+sudo logrotate -f /etc/logrotate.d/httpd
+```
+
+### To Check Log Files:
+```
+ls -lh /var/log/httpd/
+```
+
+---
+
+## 4. Next Steps (Optional Enhancements)
+
+- Add monitoring to alert if logs are not rotated weekly (e.g., using a cron script or Prometheus + alert rule).
+- Archive critical logs to S3 or a centralized log server before rotation, if audit retention is required.
+
+---
+
+## Last Updated
+
+**Date:** April 30, 2025  
+**By:** Samuel B.
+```
+
+---
+
+Would you like me to export this as a downloadable `.md` or `.pdf` file?
