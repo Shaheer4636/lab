@@ -58,14 +58,13 @@ Resources:
       RoleName:
         Fn::Join:
           - "-"
-          - [
-              Fn::FindInMap:
+          -
+            - Fn::FindInMap:
                 - AccountIDMap
                 - Ref: AWS::AccountId
-                - AccountName,
-              "SFTP-Role",
-              Ref: SFTPUserName
-            ]
+                - AccountName
+            - "SFTP-Role"
+            - Ref: SFTPUserName
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
