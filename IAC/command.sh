@@ -1,0 +1,13 @@
+aws cloudformation create-stack \
+  --stack-name test-sftp-onboarding \
+  --template-body file://sftp-onboarding.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameters \
+    ParameterKey=SFTPUserName,ParameterValue=testuser \
+    ParameterKey=SFTPServerId,ParameterValue=s-0123456789abcdef0 \
+    ParameterKey=SSHPublicKey,ParameterValue="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC..." \
+    ParameterKey=S3KMSKeyId,ParameterValue=1111aaaa-bbbb-cccc-dddd-eeeeffff0000 \
+    ParameterKey=SFTPS3BucketName,ParameterValue=dummy-sftp-test-bucket \
+    ParameterKey=SFTPSecurityGroupId,ParameterValue=sg-0123456789abcdef0 \
+    ParameterKey=PartnerIPList,ParameterValue="198.51.100.10/32,203.0.113.20/32" \
+    ParameterKey=PolicyName,ParameterValue=Test-SFTP-User-Policy
