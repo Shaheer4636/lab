@@ -26,9 +26,9 @@ Parameters:
     Type: AWS::EC2::SecurityGroup::Id
     Description: Enter the SFTP Security Group ID (HMG-US-Data-Prod-SFTP-SG-2).
 
-  SFTPPrefixListId:
-    Type: AWS::EC2::PrefixList::Id
-    Description: Enter the Prefix List ID containing partner IP addresses.
+  PartnerIPList:
+    Type: CommaDelimitedList
+    Description: Comma-separated list of partner IP CIDRs to include in the Prefix List.
 
   PolicyName:
     Type: String
@@ -41,6 +41,17 @@ Mappings:
       AccountNameLower: hmg-us-data-prod
 
 Resources:
+  PartnerPrefixList:
+    Type: AWS::EC2::PrefixList
+    Properties:
+      AddressFamily: IPv4
+      MaxEntries: 10
+      PrefixListName: !Sub SFTP-${SFTPUserName}-PrefixList
+      Entries:
+        Fn::Split:
+          - ","
+          - !Join [",", !Ref PartnerIPList]
+
   SFTPUserRole:
     Type: AWS::IAM::Role
     Properties:
@@ -113,4 +124,4 @@ Resources:
       IpProtocol: tcp
       FromPort: 22
       ToPort: 22
-      SourcePrefixListId: !Ref SFTPPrefixListId
+      SourcePrefixListId: !Ref PartnerPrefixList
