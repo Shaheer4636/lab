@@ -34,15 +34,6 @@ Parameters:
     Type: String
     Description: Name of the permission policy for the role.
 
-Mappings:
-  AccountIDMap:
-    "344181789061":
-      AccountName: HMG-US-Data-Prod
-      AccountNameLower: hmg-us-data-prod
-    "627992319838":
-      AccountName: Test-Account
-      AccountNameLower: test-account
-
 Resources:
   PartnerPrefixList:
     Type: AWS::EC2::PrefixList
@@ -58,16 +49,7 @@ Resources:
   SFTPUserRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName:
-        Fn::Join:
-          - "-"
-          -
-            - Fn::FindInMap:
-                - AccountIDMap
-                - Ref: AWS::AccountId
-                - AccountName
-            - "SFTP-Role"
-            - Ref: SFTPUserName
+      RoleName: !Sub "SFTP-Role-${SFTPUserName}"
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
