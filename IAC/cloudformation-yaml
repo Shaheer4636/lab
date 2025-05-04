@@ -47,9 +47,8 @@ Resources:
           - !Join:
               - ","
               - !Ref PartnerIPList
-        # Convert strings to JSON objects
-        # Note: Real entries require JSON objects with "Cidr" and "Description"
-        # Since Fn::Split returns strings, we rewrite using Fn::Join + for-loop
+        # NOTE: This block is syntactically incorrect.
+        # Replacing with static structure for now due to YAML validation issues.
 
   SFTPUserRole:
     Type: AWS::IAM::Role
