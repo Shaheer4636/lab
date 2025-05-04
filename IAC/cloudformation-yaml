@@ -4,27 +4,22 @@ Description: SFTP Onboarding CloudFormation Template (Modified for Prefix List S
 Parameters:
   SFTPUserName:
     Type: String
-    Default: sftp-test-demo-user
     Description: Enter the SFTP username.
 
   SFTPServerId:
     Type: String
-    Default: s-11f70be58624e51b
     Description: Enter the AWS Transfer Family server ID.
 
   SSHPublicKey:
     Type: String
-    Default: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCk9shMs0TyVLwR76F..."
     Description: Enter the SSH public key.
 
   S3KMSKeyId:
     Type: String
-    Default: f2a86c18-3b39-4849-b25e-7d8d8ee5c5ba
     Description: Enter the S3 KMS Customer Managed Key ID.
 
   SFTPS3BucketName:
     Type: String
-    Default: test-sftp-bucket-dev-test
     Description: Enter the name of the S3 bucket.
 
   SFTPSecurityGroupId:
@@ -33,12 +28,10 @@ Parameters:
 
   PartnerIPList:
     Type: CommaDelimitedList
-    Default: ["198.51.100.10/32", "203.0.113.20/32", "203.0.113.30/32", "203.0.113.40/32", "203.0.113.50/32"]
     Description: Comma-separated list of partner IP CIDRs to include in the Prefix List.
 
   PolicyName:
     Type: String
-    Default: sftp-s3-access-policy-demo-test
     Description: Name of the permission policy for the role.
 
 Mappings:
