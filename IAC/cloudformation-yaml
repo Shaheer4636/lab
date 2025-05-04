@@ -42,13 +42,16 @@ Resources:
       MaxEntries: 20
       PrefixListName: !Sub SFTP-${SFTPUserName}-PrefixList
       Entries:
-        Fn::Split:
-          - ","
-          - !Join:
-              - ","
-              - !Ref PartnerIPList
-        # NOTE: This block is syntactically incorrect.
-        # Replacing with static structure for now due to YAML validation issues.
+        - Cidr: 198.51.100.10/32
+          Description: Partner IP 1
+        - Cidr: 203.0.113.20/32
+          Description: Partner IP 2
+        - Cidr: 203.0.113.30/32
+          Description: Partner IP 3
+        - Cidr: 203.0.113.40/32
+          Description: Partner IP 4
+        - Cidr: 203.0.113.50/32
+          Description: Partner IP 5
 
   SFTPUserRole:
     Type: AWS::IAM::Role
