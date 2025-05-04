@@ -1,0 +1,10 @@
+[
+  { "ParameterKey": "SFTPUserName", "ParameterValue": "sftp-test-demo-user" },
+  { "ParameterKey": "SFTPServerId", "ParameterValue": "s-11f70be58624e51b" },
+  { "ParameterKey": "SSHPublicKey", "ParameterValue": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCk9shMs0TyVLwR76F..." },
+  { "ParameterKey": "S3KMSKeyId", "ParameterValue": "f2a86c18-3b39-4849-b25e-7d8d8ee5c5ba" },
+  { "ParameterKey": "SFTPS3BucketName", "ParameterValue": "test-sftp-bucket-dev-test" },
+  { "ParameterKey": "SFTPSecurityGroupId", "ParameterValue": "sg-03479e2de0a59d4f5" },
+  { "ParameterKey": "PartnerIPList", "ParameterValue": "198.51.100.10/32,203.0.113.20/32,203.0.113.30/32,203.0.113.40/32,203.0.113.50/32" },
+  { "ParameterKey": "PolicyName", "ParameterValue": "sftp-s3-access-policy-demo-test" }
+]
