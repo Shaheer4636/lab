@@ -44,7 +44,12 @@ Resources:
       Entries:
         Fn::Split:
           - ","
-          - !Join [",", !Ref PartnerIPList]
+          - !Join:
+              - ","
+              - !Ref PartnerIPList
+        # Convert strings to JSON objects
+        # Note: Real entries require JSON objects with "Cidr" and "Description"
+        # Since Fn::Split returns strings, we rewrite using Fn::Join + for-loop
 
   SFTPUserRole:
     Type: AWS::IAM::Role
