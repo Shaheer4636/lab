@@ -1,0 +1,40 @@
+[![Configuring SSM Agent and CloudWatch Agent to use a Proxy for Linux ...](https://tse4.mm.bing.net/th?id=OIP.c-UDLvGKjQ6pG9mj_V3lbgHaE5\&pid=Api)](https://dev.classmethod.jp/articles/configuring-ssm-agent-and-cloudwatch-agent-to-use-a-proxy-for-linux-server/)
+
+Yes, you can install the AWS Systems Manager (SSM) Agent on Alpine Linux using the official Alpine package repository.
+
+---
+
+### ✅ Install SSM Agent on Alpine Linux
+
+The `amazon-ssm-agent` package is available in Alpine's **community** repository for versions 3.13 and newer. To install it:
+
+```sh
+apk update
+apk add amazon-ssm-agent
+```
+
+
+
+This will install the latest available version (e.g., `3.3.2299.0`) along with the necessary OpenRC service scripts. ([Repology][1])
+
+---
+
+###  Start and Enable the Agent
+
+After installation, start the agent and enable it to run at boot:
+
+```sh
+rc-service amazon-ssm-agent start
+rc-update add amazon-ssm-agent
+```
+
+
+
+You can verify the agent's status with:
+
+```sh
+rc-service amazon-ssm-agent status
+```
+
+
+
