@@ -117,9 +117,13 @@ INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 
 echo "$TIMESTAMP: Script started on $INSTANCE_ID" >> "$LOG_FILE"
 
-# Auto-detect the S3 mount path (only one match expected)
-MOUNT_PATH=$(mount | awk '$5 ~ /^fuse/ && $3 ~ /^\/mnt\//' | awk '{print $3}' | grep -E '/mnt/(repository|buyspeed-)')
+# Auto-detect the S3 mount path (fuse.s3fs, under /mnt/)
+MOUNT_PATH=$(mount | grep -E 'type fuse.s3fs' | awk '{print $3}' | grep -E '^/mnt/(repository|buyspeed-)' | head -n1)
 
+# Debug: log detected mount path
+echo "$TIMESTAMP: Detected mount path: $MOUNT_PATH" >> "$LOG_FILE"
+
+# Safety check
 if [ -z "$MOUNT_PATH" ]; then
     ALERT_MSG="$TIMESTAMP: ERROR - No S3 mount found under /mnt/ on instance $INSTANCE_ID!"
     echo "$ALERT_MSG" >> "$LOG_FILE"
@@ -137,7 +141,7 @@ if [ -z "$MOUNT_PATH" ]; then
     exit 1
 fi
 
-# Actual mountpoint check
+# Check if the mount point is actually active
 if /bin/mountpoint -q "$MOUNT_PATH"; then
     ALERT_MSG="$TIMESTAMP: OK - $MOUNT_PATH is mounted and active on instance $INSTANCE_ID."
 else
@@ -148,7 +152,7 @@ else
       -H "Authorization: GenieKey $OPS_API_KEY" \
       -d "{
             \"message\": \"$ALERT_MSG\",
-            \"alias\": \"s3-mount-check-$INSTANCE_ID-$MOUNT_PATH\",
+            \"alias\": \"s3-mount-check-$INSTANCE_ID-$(basename $MOUNT_PATH)\",
             \"description\": \"$ALERT_MSG\",
             \"priority\": \"P2\",
             \"source\": \"$INSTANCE_ID\"
@@ -156,4 +160,5 @@ else
 fi
 
 echo "$ALERT_MSG" >> "$LOG_FILE"
+
 ```
