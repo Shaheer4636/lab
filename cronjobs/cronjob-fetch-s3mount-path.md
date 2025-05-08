@@ -162,3 +162,8 @@ fi
 echo "$ALERT_MSG" >> "$LOG_FILE"
 
 ```
+
+
+** Expected Behaviour
+1. Once the opsgenie notification is ack it will not be logged again
+2. till the notification is closed, assigned, ack it will lot be alerted again.
