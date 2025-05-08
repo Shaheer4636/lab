@@ -23,11 +23,15 @@ if [ -z "$MOUNT_PATH" ]; then
       -H "Content-Type: application/json" \
       -H "Authorization: GenieKey $OPS_API_KEY" \
       -d "{
-            \"message\": \"$ALERT_MSG\",
+            \"message\": \"S3 Mount Check Failed - $INSTANCE_ID\",
             \"alias\": \"s3-mount-check-$INSTANCE_ID-none\",
             \"description\": \"$ALERT_MSG\",
             \"priority\": \"P2\",
-            \"source\": \"$INSTANCE_ID\"
+            \"source\": \"$INSTANCE_ID\",
+            \"details\": {
+              \"InstanceId\": \"$INSTANCE_ID\",
+              \"MountPath\": \"None\"
+            }
           }"
     exit 1
 fi
@@ -42,11 +46,15 @@ else
       -H "Content-Type: application/json" \
       -H "Authorization: GenieKey $OPS_API_KEY" \
       -d "{
-            \"message\": \"$ALERT_MSG\",
+            \"message\": \"S3 Mount Not Found - $MOUNT_PATH on $INSTANCE_ID\",
             \"alias\": \"s3-mount-check-$INSTANCE_ID-$(basename $MOUNT_PATH)\",
             \"description\": \"$ALERT_MSG\",
             \"priority\": \"P2\",
-            \"source\": \"$INSTANCE_ID\"
+            \"source\": \"$INSTANCE_ID\",
+            \"details\": {
+              \"InstanceId\": \"$INSTANCE_ID\",
+              \"MountPath\": \"$MOUNT_PATH\"
+            }
           }"
 fi
 
