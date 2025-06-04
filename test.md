@@ -1,4 +1,6 @@
 docker tag hello-world:latest 333661424489.dkr.ecr.us-east-2.amazonaws.com/hello-world:latest
+docker push 333661424489.dkr.ecr.us-east-2.amazonaws.com/hello-world:latest
+
 
 
 ---
