@@ -1,78 +1,15 @@
-Awesome! Your image `libertytestecr:latest` is successfully pushed to ECR ✅
+# Create main folders
+mkdir -p BatchAppRunTime/{run/{batch-scripts/{proclib1,proclib2,etc},bin/bash,config,data-files,log-files/{b,y,etc},temp-files},helm/templates,scripts,tbd}
 
-Now let’s **run it inside your EKS cluster as a Pod**.
+# Create files
+touch BatchAppRunTime/{Dockerfile,entrypoint.sh,README.md}
 
----
+# Create config files
+touch BatchAppRunTime/run/config/{application.config,setenv.sh}
 
-## 🚀 Kubernetes Manifest to Run ECR Image as a Pod
+# Create .jar directory and zos_declarations
+mkdir -p BatchAppRunTime/run/bin/zos_declarations
 
-Create a file called:
-
-```bash
-libertytestecr-pod.yaml
-```
-
-With the following content:
-
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: libertytester
-spec:
-  containers:
-  - name: libertytester
-    image: 333661424489.dkr.ecr.us-east-2.amazonaws.com/libertytestecr:latest
-    imagePullPolicy: Always
-
-```
-
----
-
-## 📌 How to Apply
-
-```bash
-kubectl apply -f libertytestecr-pod.yaml
-```
-
-Check status:
-
-```bash
-kubectl get pods
-kubectl describe pod libertytester
-kubectl logs libertytester
-```
-
----
-
-## 🔐 Ensure EKS Nodes Have Pull Access to ECR
-
-Your EKS worker node IAM role must have this policy attached:
-
-```json
-{
-  "Effect": "Allow",
-  "Action": [
-    "ecr:GetDownloadUrlForLayer",
-    "ecr:BatchGetImage",
-    "ecr:BatchCheckLayerAvailability"
-  ],
-  "Resource": "*"
-}
-```
-
-✅ If you attached the `AmazonEC2ContainerRegistryReadOnly` policy, you’re already good.
-
----
-
-## ✅ What You’ll See
-
-After running the pod, `kubectl logs libertytester` should show:
-
-```
-Hello from libertytester ECR image
-```
-
----
-
-Let me know if you want to convert this into a **Helm chart**, **K8s deployment with LoadBalancer**, or expose it over **HTTPS with Ingress**.
+# Create helm files
+touch BatchAppRunTime/helm/{Chart.yaml,values.yaml}
+touch BatchAppRunTime/helm/templates/{job.yaml,configmap.yaml,secret.yaml,serviceaccount.yaml}
