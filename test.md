@@ -1,4 +1,5 @@
-Got it! If you want to push a basic **"Hello World"** Docker image to ECR, here's a minimal setup you can use:
+docker tag hello-world:latest 333661424489.dkr.ecr.us-east-2.amazonaws.com/hello-world:latest
+
 
 ---
 
