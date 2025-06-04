@@ -1,6 +1,19 @@
-mkdir -p BatchAppRunTime/{run/{batch-scripts/{proclib1,proclib2,etc},bin/bash/zos_declarations,config,data-files,log-files/{b,y,etc},temp-files},helm/templates,scripts,tbd}
+ App & Runtime Info
+What language/platform is the app built in? (e.g., Node.js, Python, Java)
 
-touch BatchAppRunTime/{Dockerfile,entrypoint.sh,README.md}
-touch BatchAppRunTime/run/config/{application.config,setenv.sh}
-touch BatchAppRunTime/helm/{Chart.yaml,values.yaml}
-touch BatchAppRunTime/helm/templates/{job.yaml,configmap.yaml,secret.yaml,serviceaccount.yaml}
+What command starts the app?
+
+Which ports does the app expose?
+
+Any background jobs or multiple services?
+
+Any OS-level dependencies (Ubuntu packages)?
+
+🔹 Configuration & Secrets
+What environment variables are needed?
+
+Are there .env, .yaml, or config files?
+
+Which configs can go into ConfigMaps?
+
+Which secrets need to go into Kubernetes Secrets?
