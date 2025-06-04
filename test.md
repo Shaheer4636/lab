@@ -24,8 +24,7 @@ spec:
   - name: libertytester
     image: 333661424489.dkr.ecr.us-east-2.amazonaws.com/libertytestecr:latest
     imagePullPolicy: Always
-    command: ["/bin/sh"]
-    args: ["-c", "echo Hello from libertytester ECR image && sleep 3600"]
+
 ```
 
 ---
