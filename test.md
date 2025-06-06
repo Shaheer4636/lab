@@ -1,126 +1,86 @@
-
-
-### File: `blro_main_template.yml`
-
-This is the **primary GitLab CI template** that orchestrates multiple pipeline stages using includes such as:
-
-* `build-infra.yml`
-* `deploy-cluster.yml`
-* `cluster-scanning.yml`
-* `deliver-artifacts.yml`
-* `destroy.yml`
-
-The file defines high-level jobs for static analysis, changelog validation, and ansible linting, but most are currently commented out. It’s the backbone of the CI/CD process, meant to modularize and organize complex workflows.
+Perfect. Here's **exactly what you need to do** to create a shared folder for the users: `frank`, `ubuntu`, `ssm`, `preeti`, `gaurav`, and `brent` on your Ubuntu server.
 
 ---
 
-### File: `build-infra.yml`
+### 🔧 Step-by-Step Setup
 
-This file contains the **infrastructure provisioning logic**. It:
+#### ✅ 1. Create the Shared Folder
 
-* Initializes Terraform
-* Uses SSH to communicate with a VM
-* Sets up SSH keys with `sshpass` and `ssh-copy-id`
-* Pulls output from Terraform to dynamically extract the controller IP
-
-It's executed during the `build-infra` stage and sets the foundation for further configuration management or deployment steps.
+```bash
+sudo mkdir /srv/shared
+```
 
 ---
 
-### File: `cluster-scanning.yml`
+#### ✅ 2. Create a Shared Group
 
-Handles **security compliance scanning** using `kube-bench` against the CIS Kubernetes benchmark.
-It:
+Create a group called `sharedgroup`:
 
-* SSHs into a target node
-* Downloads and installs `kube-bench`
-* Runs the benchmark for CIS level 1
-* Copies back the resulting `cis_compliance_report.yaml`
-
-This ensures the deployed cluster is scanned for misconfigurations.
+```bash
+sudo groupadd sharedgroup
+```
 
 ---
 
-### File: `deliver-artifacts.yml`
+#### ✅ 3. Add All Users to the Group
 
-This template supports **artifact packaging and delivery** to GitLab's package registry.
-It includes two jobs:
+Run these commands one by one:
 
-* `.push-package`: uploads application tarballs using curl and `$CI_JOB_TOKEN`
-* `.docs-deliver-package`: uploads documentation zip files
+```bash
+sudo usermod -aG sharedgroup frank
+sudo usermod -aG sharedgroup ubuntu
+sudo usermod -aG sharedgroup ssm
+sudo usermod -aG sharedgroup preeti
+sudo usermod -aG sharedgroup gaurav
+sudo usermod -aG sharedgroup brent
+```
 
-Also uses `apk add curl` in `before_script` and prints GitLab CI environment variables for debugging.
-
----
-
-### File: `deploy-cluster.yml`
-
-Orchestrates the **deployment of a Kubernetes cluster**, running tasks like:
-
-* Copying tarballs for Bloodrock config and tests
-* Unpacking and modifying integration config files
-* Injecting PSS policies and exemptions
-* Running a deployment via `prod-k8sctl.sh`
-
-It supports both single-node and multi-node deployment variants with IP extraction from Terraform output.
+⚠️ **All users must log out and log back in** to apply the new group membership.
 
 ---
 
-### File: `destroy.yml`
+#### ✅ 4. Set Group Ownership and Permissions on the Folder
 
-Manages **tear-down operations** for both cluster and infrastructure:
+```bash
+sudo chown root:sharedgroup /srv/shared
+sudo chmod 2775 /srv/shared
+```
 
-* `.destroy-cluster`: SSH into the VM and run `prod-k8sctl.sh prod_down`
-* `.destroy-infra`: Clones the infra repo, initializes Terraform, and destroys resources using `terraform destroy -auto-approve`
-
-Also sends a DELETE request to remove remote state metadata from GitLab-hosted infra state backend.
-
----
-
-### File: `functional-testing.yml`
-
-Includes jobs like:
-
-* `fluentd-tests`
-* `kyverno-tests`
-
-These jobs:
-
-* SSH into the integration test VM
-* Set the Go binary path
-* Run `go test` against specified test files (`fluentd_test.go`, `kyverno_test.go`)
-
-
-
-
-
-### File: `package-artifacts.yml`
-
-This file manages multiple packaging-related jobs in the CI/CD pipeline:
-
-* `.build-dev-image`: Builds and pushes an Ansible Docker image using `pkg-tool.sh`.
-* `.build-smoke-test-image`: Builds a test image using a smoke test Dockerfile, though marked as non-functional (`TODO` comment).
-* `.package-bloodrock`: Sets up `docker:dind` with insecure registries for internal usage. It also sets up SSH keys and logs into Docker for Ansible-related builds.
-* `.package-functional-tests`: Runs `go test` against helper functions, tars results, and stores as artifacts.
-* `.docs-pandoc-build`: Converts Markdown and PDF documentation using `pandoc` and `python3`, then saves artifacts for documentation.
-* `.docs-pull-kubernetes-docs`: Downloads Kubernetes and Helm documentation zip from Nexus and extracts it.
-
-This file is essential for Docker image packaging, test image building, and preparing documentation artifacts.
+* `2775` sets the **setgid bit** so new files keep the group ownership.
+* All users in `sharedgroup` can **read, write, and list files**.
 
 ---
 
-### File: `static-analysis.yml`
+#### ✅ 5. (Optional but Recommended) Set Default Permissions for New Files
 
-This pipeline YAML focuses on enforcing quality gates and standards:
+Install ACL (if not already installed):
 
-* `.enforce-changelog-edit`: Ensures the changelog has entries for new tags.
-* `.lint-ansible`: SSH key setup, Python virtualenv activation, and Ansible linting via `make lint`.
-* `.kube-linter`: Downloads and runs `kube-linter` against Kubernetes manifests using a custom kube-lint config.
-* `.bad-word-scanner`: Runs a Python script (`bad_word_scanner.py`) to scan for disallowed words.
-* `.lint-yaml`: Runs `yamllint` across all YAML files using a generated list (`yamlsList.txt`), ensuring compliance with formatting rules.
-* `.docs-markdown-spellcheck`: Uses `mdspell` to perform spell checks on documentation files.
-* `.docs-markdown-lint`: Lints markdown files for formatting and style compliance using `mdl`.
-* `.trivy-container-scan`: Runs a Trivy scan against Docker containers in the CI registry.
+```bash
+sudo apt install acl
+```
 
+Then set default ACL:
 
+```bash
+sudo setfacl -d -m g::rwx /srv/shared
+sudo setfacl -d -m o::rx /srv/shared
+```
 
+This ensures all **new files or folders inside `/srv/shared` automatically** get group read-write permissions.
+
+---
+
+### ✅ Final Verification
+
+You can test as any of the users:
+
+```bash
+cd /srv/shared
+touch testfile
+```
+
+Run `ls -l` to confirm the file is group-owned by `sharedgroup`.
+
+---
+
+Let me know if you want this shared folder to be accessible via **Samba**, **NFS**, or over the **network** too.
