@@ -1,4 +1,4 @@
-mkdir -p MatchAppBuild/.git
+```mkdir -p MatchAppBuild/.git
 mkdir -p MatchAppBuild/src/main/java
 mkdir -p MatchAppBuild/src/main/resources
 mkdir -p MatchAppBuild/src/test/java
@@ -18,4 +18,4 @@ touch MatchAppBuild/conf/application.config
 touch MatchAppBuild/build.xml
 touch MatchAppBuild/build-common.xml
 touch MatchAppBuild/build.properties
-touch MatchAppBuild/.gitignore
+touch MatchAppBuild/.gitignore```bash
