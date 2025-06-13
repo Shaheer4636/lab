@@ -1,21 +1,29 @@
-```mkdir -p MatchAppBuild/.git
-mkdir -p MatchAppBuild/src/main/java
-mkdir -p MatchAppBuild/src/main/resources
-mkdir -p MatchAppBuild/src/test/java
-mkdir -p MatchAppBuild/src/test/resources
-mkdir -p MatchAppBuild/batch-scripts
-mkdir -p MatchAppBuild/lib/runtime
-mkdir -p MatchAppBuild/lib/compile
-mkdir -p MatchAppBuild/build/classes
-mkdir -p MatchAppBuild/build/test-classes
-mkdir -p MatchAppBuild/build/_dist
-mkdir -p MatchAppBuild/conf
-mkdir -p MatchAppBuild/docs
-mkdir -p MatchAppBuild/tools
+```
 
-touch MatchAppBuild/build/_dist/LibertyMutual-App.jar
-touch MatchAppBuild/conf/application.config
-touch MatchAppBuild/build.xml
-touch MatchAppBuild/build-common.xml
-touch MatchAppBuild/build.properties
-touch MatchAppBuild/.gitignore```bash
+#!/bin/bash
+
+# Create user joseph
+sudo useradd -m -s /bin/bash joseph
+
+# Set password
+echo 'joseph:joseph@liberty123!' | sudo chpasswd
+
+# Add to sudo group
+sudo usermod -aG sudo joseph
+
+# Ensure SSH is installed
+sudo apt update && sudo apt install -y openssh-server
+
+# Enable password auth in SSH (if needed)
+sudo sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+# Disable root login for better security
+sudo sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+
+# Restart SSH service
+sudo systemctl restart ssh
+
+echo "User 'joseph' created with sudo access. You can now login using: ssh joseph@<server-ip>"
+
+
+```bash
