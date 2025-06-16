@@ -26,7 +26,7 @@ The scale-down rules are hardcoded per environment:
 
 ---
 
-## 📦 Installation
+## Installation
 
 
 
@@ -34,7 +34,7 @@ The scale-down rules are hardcoded per environment:
 
 The main command is `asg-schedule apply`.
 
-### 🔹 Basic Example
+### Basic Example
 
 ```bash
 ./asg-scheduler asg-schedule apply \
@@ -44,7 +44,7 @@ The main command is `asg-schedule apply`.
   --verbose
 ```
 
-### 🔹 Explanation
+### Explanation
 
 | Flag                | Description                                                                 |
 | ------------------- | --------------------------------------------------------------------------- |
@@ -71,7 +71,7 @@ This will show which ASGs would be modified without actually creating scheduled 
 
 ---
 
-## 🧬 ASG Name Matching Logic
+##  ASG Name Matching Logic
 
 The ASG name should follow this regex pattern:
 
@@ -81,7 +81,7 @@ The ASG name should follow this regex pattern:
 
 Examples:
 
-* `epro-order-prod-v3` ✅
-* `epro-billing-uat-v1` ✅
-* `random-asg-prod` ❌
+* `epro-order-prod-v3` ok
+* `epro-billing-uat-v1` ok
+* `random-asg-prod` not ok
 
