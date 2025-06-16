@@ -38,7 +38,7 @@ The main command is `asg-schedule apply`.
 
 ```bash
 ./asg-scheduler asg-schedule apply \
-  --logical-name "epro" \
+  --logical-name "stage" \
   --cron-expression "0 22 * * 5" \
   --duration 540 \
   --verbose
