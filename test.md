@@ -2,28 +2,28 @@
 
 #!/bin/bash
 
-# Create user joseph
-sudo useradd -m -s /bin/bash joseph
+# === CONFIG: REPLACE this with your .pem private key converted to public key ===
+PUBLIC_KEY="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC..."  # <-- Replace with actual public key
 
-# Set password
-echo 'joseph:joseph@liberty123!' | sudo chpasswd
+echo "[*] Creating .ssh directory and fixing permissions for ubuntu user..."
 
-# Add to sudo group
-sudo usermod -aG sudo joseph
+sudo mkdir -p /home/ubuntu/.ssh
+echo "$PUBLIC_KEY" | sudo tee /home/ubuntu/.ssh/authorized_keys >/dev/null
 
-# Ensure SSH is installed
-sudo apt update && sudo apt install -y openssh-server
+sudo chmod 700 /home/ubuntu/.ssh
+sudo chmod 600 /home/ubuntu/.ssh/authorized_keys
+sudo chown -R ubuntu:ubuntu /home/ubuntu/.ssh
 
-# Enable password auth in SSH (if needed)
-sudo sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+echo "[*] Updating sshd_config to allow key-based login..."
+sudo sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+sudo sed -i 's/^#*ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+sudo sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
 
-# Disable root login for better security
-sudo sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+echo "[*] Restarting SSH service..."
+sudo systemctl restart sshd
 
-# Restart SSH service
-sudo systemctl restart ssh
+echo "[✓] Done. You should now be able to SSH with your .pem file again."
 
-echo "User 'joseph' created with sudo access. You can now login using: ssh joseph@<server-ip>"
 
 
 ```bash
