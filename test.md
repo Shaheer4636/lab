@@ -1,41 +1,52 @@
-Contributors
+🔸 Contributors
+Limited to view-only access for release pipelines and releases.
 
-Permissions are restricted to view-only access.
-
-Cannot create, edit, or manage any release pipelines or stages.
+All create, delete, manage, and edit permissions are Not set.
 
 🔸 Non-Production Release Approvers
+Denied from creating and deleting releases in production.
 
-Can create, manage, and approve non-prod releases.
+Allowed to view and manage releases but cannot modify pipelines/stages.
 
-Cannot edit or delete pipelines or stages to preserve integrity.
+🔸 Production Release Approvers
+Granted view and manage access to releases only.
+
+No rights to create, delete, or edit pipelines/stages.
 
 🔸 Project Administrators
+All critical permissions (create, delete, manage, edit) are explicitly denied.
 
-Several permissions like edit/delete are explicitly denied.
-
-This is a deviation from usual admin privileges and should be reviewed if unintended.
+Only allowed to view release pipelines and releases.
 
 🔸 Readers
+As expected, view-only access is granted.
 
-Limited to view release pipeline and view releases only.
-
-All other permissions are unset, enforcing read-only access.
+No permissions set for managing or modifying anything.
 
 🔸 Release Administrators
+Granted full access to manage all aspects of releases and pipelines.
 
-Granted full release permissions across all categories.
-
-Has full control over pipelines, stages, deployments, and approvals.
+This group retains complete control as expected for admin-level roles.
 
 🔸 Release Approvers
+Denied most permissions including create, delete, and manage.
 
-Allowed to create, manage, and approve releases.
-
-Cannot modify pipelines or stages — permissions are restricted accordingly.
+Only view access is inherited — cannot perform any release operations.
 
 🔸 Project Collection Administrators
+Inherited full access to all permissions — release creation, editing, deletion, and management.
 
-Has inherited full permissions, including edit, delete, and manage rights.
+Has unrestricted control over the entire production folder.
 
-Retains global administrative access across the board.
+
+
+
+🔐 Production environment (PROD\ADVA) is much more restricted:
+
+Approvers and Admins are limited in their ability to create, delete, or modify.
+
+Production Release Approvers group exists only in PROD.
+
+Project Administrators have full control in NON-PROD but are denied nearly everything in PROD.
+
+✅ NON-PROD (\NON-PROD\Fusion) allows more flexibility for testing, experimentation, and active development tasks.
