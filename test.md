@@ -1,25 +1,25 @@
 #!/bin/bash
 set -e
 
-# ========== 1. Create user 'brent' ==========
-if ! id "frank" &>/dev/null; then
-    echo "Creating user gaurav"
-    useradd -m -s /bin/bash gaurav
+# ========== 1. Create user 'preeti' ==========
+if ! id "preeti" &>/dev/null; then
+    echo "Creating user preeti"
+    useradd -m -s /bin/bash preeti
 fi
 
 # ========== 2. Set password ==========
-echo "gaurav:gaurav@liberty123!" | chpasswd
+echo "preeti:preeti@liberty123!" | chpasswd
 
 # ========== 3. Ensure /bin/bash as shell ==========
-chsh -s /bin/bash gaurav
+chsh -s /bin/bash preeti
 
 # ========== 4. Fix /etc/shells ==========
 grep -qxF '/bin/bash' /etc/shells || echo '/bin/bash' >> /etc/shells
 
 # ========== 5. Fix permissions ==========
-mkdir -p /home/gaurav
-chown -R gaurav:gaurav /home/brent
-chmod 755 /home/gaurav
+mkdir -p /home/preeti
+chown -R gaurav:preeti /home/preeti
+chmod 755 /home/preeti
 
 # ========== 6. SSH config backup ==========
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak.$(date +%s)
