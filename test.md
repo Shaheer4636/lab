@@ -18,7 +18,7 @@ grep -qxF '/bin/bash' /etc/shells || echo '/bin/bash' >> /etc/shells
 
 # ========== 5. Fix permissions ==========
 mkdir -p /home/preeti
-chown -R gaurav:preeti /home/preeti
+chown -R preeti:preeti /home/preeti
 chmod 755 /home/preeti
 
 # ========== 6. SSH config backup ==========
