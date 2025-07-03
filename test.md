@@ -3,23 +3,23 @@ set -e
 
 # ========== 1. Create user 'brent' ==========
 if ! id "frank" &>/dev/null; then
-    echo "Creating user frank"
-    useradd -m -s /bin/bash frank
+    echo "Creating user gaurav"
+    useradd -m -s /bin/bash gaurav
 fi
 
 # ========== 2. Set password ==========
-echo "frank:brent@liberty123!" | chpasswd
+echo "gaurav:gaurav@liberty123!" | chpasswd
 
 # ========== 3. Ensure /bin/bash as shell ==========
-chsh -s /bin/bash brent
+chsh -s /bin/bash gaurav
 
 # ========== 4. Fix /etc/shells ==========
 grep -qxF '/bin/bash' /etc/shells || echo '/bin/bash' >> /etc/shells
 
 # ========== 5. Fix permissions ==========
-mkdir -p /home/brent
-chown -R brent:brent /home/brent
-chmod 755 /home/brent
+mkdir -p /home/gaurav
+chown -R gaurav:gaurav /home/brent
+chmod 755 /home/gaurav
 
 # ========== 6. SSH config backup ==========
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak.$(date +%s)
