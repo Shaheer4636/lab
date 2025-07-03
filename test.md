@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# ========== 1. Create user 'preeti' ==========
+# ========== 1. Create user 'jacob' ==========
 if ! id "jacob" &>/dev/null; then
     echo "Creating user jacob"
     useradd -m -s /bin/bash jacob
@@ -11,13 +11,13 @@ fi
 echo "jacob:jacob@liberty123!" | chpasswd
 
 # ========== 3. Ensure /bin/bash as shell ==========
-chsh -s /bin/bash preeti
+chsh -s /bin/bash jacob
 
 # ========== 4. Fix /etc/shells ==========
 grep -qxF '/bin/bash' /etc/shells || echo '/bin/bash' >> /etc/shells
 
 # ========== 5. Fix permissions ==========
-mkdir -p /home/preeti
+mkdir -p /home/jacob
 chown -R jacob:jacob /home/jacob
 chmod 755 /home/jacob
 
