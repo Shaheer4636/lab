@@ -1,25 +1,25 @@
 #!/bin/bash
 set -e
 
-# ========== 1. Create user 'frank' ==========
+# ========== 1. Create user 'brent' ==========
 if ! id "frank" &>/dev/null; then
     echo "Creating user frank"
     useradd -m -s /bin/bash frank
 fi
 
 # ========== 2. Set password ==========
-echo "frank:frank@liberty123!" | chpasswd
+echo "frank:brent@liberty123!" | chpasswd
 
 # ========== 3. Ensure /bin/bash as shell ==========
-chsh -s /bin/bash frank
+chsh -s /bin/bash brent
 
 # ========== 4. Fix /etc/shells ==========
 grep -qxF '/bin/bash' /etc/shells || echo '/bin/bash' >> /etc/shells
 
 # ========== 5. Fix permissions ==========
-mkdir -p /home/frank
-chown -R frank:frank /home/frank
-chmod 755 /home/frank
+mkdir -p /home/brent
+chown -R brent:brent /home/brent
+chmod 755 /home/brent
 
 # ========== 6. SSH config backup ==========
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak.$(date +%s)
