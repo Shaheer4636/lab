@@ -1,64 +1,43 @@
-#!/bin/bash
+Hi Ozodi,
+In all the CareLink QA automation Pipeline -HCC-NEWSERVICES-REGRESSION-TEST>, we request to remove the existing stage ReferralAPISuite and add the following stages. Please let me know if you have any questions.
 
-# CloudShell-friendly script: audits backup protection for all EC2-attached volumes
+For TERRA automation
+Stage Name: TerraPurchase
+UAT command: run:uat:ui:TerraSinglePurchaseReferralAPI
+UAT2 command: run:uat2:ui:TerraSinglePurchaseReferralAPI
+QA command: run:qa:ui:TerraSinglePurchaseReferralAPI
+TEST command: run:tst:ui:TerraSinglePurchaseReferralAPI
+STG command: run:stg:ui:TerraSinglePurchaseReferralAPI
+STG2 command: run:stg2:ui:TerraSinglePurchaseReferralAPI
 
-REGIONS=$(aws ec2 describe-regions --query "Regions[*].RegionName" --output text)
-TOTAL_SLEEP=2
+Stage Name: TerraRental
+UAT command: run:uat:ui:TerraSingleRentalReferralAPI
+UAT2 command: run:uat2:ui:TerraSingleRentalReferralAPI
+QA command: run:qa:ui:TerraSingleRentalReferralAPI
+TEST command: run:tst:ui:TerraSingleRentalReferralAPI
+STG command: run:stg:ui:TerraSingleRentalReferralAPI
+STG2 command: run:stg2:ui:TerraSingleRentalReferralAPI
 
-echo "🚀 Starting backup audit across all regions..."
-echo "⌛ This process will be intentionally slow for full analysis simulation"
+Stage Name: TerraExtensionReturned
+UAT command: run:uat:ui:TerraExtensionReturned
+UAT2 command: run:uat2:ui:TerraExtensionReturned
+QA command: run:qa:ui:TerraExtensionReturned
+TEST command: run:tst:ui:TerraExtensionReturned
+STG command: run:stg:ui:TerraExtensionReturned
+STG2 command: run:stg2:ui:TerraExtensionReturned
 
-for REGION in $REGIONS; do
-  echo ""
-  echo "🔍 Region: $REGION"
-  INSTANCE_IDS=$(aws ec2 describe-instances \
-    --region "$REGION" \
-    --query "Reservations[*].Instances[*].InstanceId" \
-    --output text)
+Stage Name: TerraTwoServiceRequests
+UAT command: run:uat:ui:TerraTwoServiceRequests
+UAT2 command: run:uat2:ui:TerraTwoServiceRequests
+QA command: run:qa:ui:TerraTwoServiceRequests
+TEST command: run:tst:ui:TerraTwoServiceRequests
+STG command: run:stg:ui:TerraTwoServiceRequests
+STG2 command: run:stg2:ui:TerraTwoServiceRequests
 
-  for INSTANCE_ID in $INSTANCE_IDS; do
-    echo "  🔹 Checking instance: $INSTANCE_ID"
-
-    VOLUME_IDS=$(aws ec2 describe-instances \
-      --region "$REGION" \
-      --instance-ids "$INSTANCE_ID" \
-      --query "Reservations[*].Instances[*].BlockDeviceMappings[*].Ebs.VolumeId" \
-      --output text)
-
-    for VOLUME_ID in $VOLUME_IDS; do
-      echo "    🧩 Volume: $VOLUME_ID"
-
-      echo "      🏷️ Tags:"
-      aws ec2 describe-volumes \
-        --region "$REGION" \
-        --volume-ids "$VOLUME_ID" \
-        --query "Volumes[0].Tags" \
-        --output table
-
-      echo "      🔐 Checking AWS Backup association..."
-
-      # Use AWS Backup to check if this volume is protected
-      PROTECTED=$(aws backup list-protected-resources \
-        --region "$REGION" \
-        --query "Results[?ResourceArn=='arn:aws:ec2:$REGION:$(aws sts get-caller-identity --query Account --output text):volume/$VOLUME_ID']" \
-        --output text)
-
-      if [[ -z "$PROTECTED" ]]; then
-        echo "      ❌ NOT protected by AWS Backup"
-      else
-        echo "      ✅ Protected by AWS Backup"
-      fi
-
-      # Add intentional delay
-      echo "      ⏳ Simulating delay..."
-      sleep $TOTAL_SLEEP
-    done
-
-    sleep $TOTAL_SLEEP
-  done
-
-  sleep $TOTAL_SLEEP
-done
-
-echo ""
-echo "✅ Completed full backup audit."
+Stage Name: TerraFourServiceRequests
+UAT command: run:uat:ui:TerraFourServiceRequests
+UAT2 command: run:uat2:ui:TerraFourServiceRequests
+QA command: run:qa:ui:TerraFourServiceRequests
+TEST command: run:tst:ui:TerraFourServiceRequests
+STG command: run:stg:ui:TerraFourServiceRequests
+STG2 command: run:stg2:ui:TerraFourServiceRequests
