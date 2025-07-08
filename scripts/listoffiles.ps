@@ -1,0 +1,6 @@
+Get-ChildItem -Path C:\ -Recurse -File -ErrorAction SilentlyContinue |
+Where-Object {
+    $_.CreationTime -ge (Get-Date "2025-02-01") -and
+    $_.CreationTime -lt (Get-Date "2025-04-01")
+} |
+Select-Object FullName, CreationTime
