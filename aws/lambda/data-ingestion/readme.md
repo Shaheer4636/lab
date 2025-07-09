@@ -17,7 +17,7 @@ Upon the creation of an object in S3 (conforming to a predefined naming schema),
 
 
 ## Architecture
-[!Overall Architecture](./data-ngestion-pipeline-2.drawio%20(1).png)
+[!Overall Architecture](./data-ngestion-pipeline-2.png)
 1. **S3 triggers** a Lambda function whenever users.csv or test.csv is uploaded.
 2. **The Lambda validates** the filename, downloads the file, and parses it into a DataFrame.
 3. **It performs strict schema validation** against a predefined structure for each table.
