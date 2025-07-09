@@ -15,9 +15,9 @@ Upon the creation of an object in S3 (conforming to a predefined naming schema),
 4. **Transformation:** Parses CSV into a pandas `DataFrame`.
 5. **Load:** Appends or replaces the corresponding table in a PostgreSQL instance hosted on Amazon RDS using SQLAlchemy.
 
-This behavior enables a form of continuous integration for raw data, streamlining ingestion into a structured relational model.
 
 ## Architecture
+[Overall Architecture](data-ngestion-pipeline-2.drawio.png)
 1. **S3 triggers** a Lambda function whenever users.csv or test.csv is uploaded.
 2. **The Lambda validates** the filename, downloads the file, and parses it into a DataFrame.
 3. **It performs strict schema validation** against a predefined structure for each table.
