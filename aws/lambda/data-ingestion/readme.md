@@ -1,17 +1,9 @@
-Here's a CERN-style `README.md` that reflects a scientific, cloud-integrated, automation-driven approach — written in the tone of a CERN engineer or computing fellow. It avoids marketing fluff and focuses on reproducibility, data integrity, and system behavior:
 
----
-
-````markdown
-# 🧪 Scientific Data Ingestion Pipeline (S3 → PostgreSQL via AWS Lambda)
+# Scientific Data Ingestion Pipeline (S3 → PostgreSQL via AWS Lambda)
 
 ## Overview
 
 This module automates the ingestion of structured scientific data (CSV format) from AWS S3 into a PostgreSQL datastore. It is designed to operate in a cloud-native, event-driven architecture using AWS Lambda for near real-time responsiveness to new dataset uploads.
-
-### Context
-
-At CERN, efficient ingestion and transformation of detector-level or experiment-generated data is essential. This pipeline abstracts the ingestion layer of such a system, applying scientific computing practices — atomicity, observability, and traceability — in a reproducible, automated pipeline.
 
 ## Functional Description
 
