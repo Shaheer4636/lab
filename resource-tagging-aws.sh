@@ -1,22 +1,35 @@
 #!/bin/bash
 
-# Set tag key and value
+# Set your desired tag
 TAG_KEY="project"
-TAG_VALUE="lib"
+TAG_VALUE="liberty"
 
-# Get all resource IDs in the current subscription
-echo "[+] Fetching all resource IDs..."
-RESOURCE_IDS=$(az resource list --query "[].id" -o tsv)
+echo "[*] Fetching all AWS regions..."
+REGIONS=$(aws ec2 describe-regions --query "Regions[].RegionName" --output text)
 
-echo "[+] Applying tag to all resources..."
+# Loop through all regions
+for REGION in $REGIONS; do
+  echo -e "\n[+] Processing region: $REGION"
+  
+  # Get all resource ARNs in this region
+  RESOURCE_ARNS=$(aws resourcegroupstaggingapi get-resources \
+    --region "$REGION" \
+    --query "ResourceTagMappingList[].ResourceARN" \
+    --output text)
 
-# Loop through all resources and apply the tag
-for RESOURCE_ID in $RESOURCE_IDS; do
-  echo "Tagging: $RESOURCE_ID"
-  az resource tag \
-    --ids "$RESOURCE_ID" \
-    --tags $TAG_KEY=$TAG_VALUE \
-    --only-show-errors
+  if [ -z "$RESOURCE_ARNS" ]; then
+    echo "[-] No resources found in $REGION"
+    continue
+  fi
+
+  for ARN in $RESOURCE_ARNS; do
+    echo "[+] Tagging $ARN with $TAG_KEY=$TAG_VALUE"
+    aws resourcegroupstaggingapi tag-resources \
+      --region "$REGION" \
+      --resource-arn-list "$ARN" \
+      --tags $TAG_KEY=$TAG_VALUE \
+      --output text
+  done
 done
 
-echo "[✓] Tagging complete."
+echo -e "\n[✓] Tagging completed across all regions."
