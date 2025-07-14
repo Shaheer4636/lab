@@ -1,7 +1,7 @@
 # Define the stage names
 $stageNames = @(
-    "$(HCC.QA.NewServices.Qa.StageName)",
-    "$(HCC.QA.NewServices.B2B.StageName)"
+    $env:HCC_QA_NewServices_Qa_StageName,
+    $env:HCC_QA_NewServices_B2B_StageName
 )
 
 # Track overall status
