@@ -1,7 +1,18 @@
+# Manually set fallback values for debugging
+$qaStage = $env:HCC_QA_NewServices_Qa_StageName
+$b2bStage = $env:HCC_QA_NewServices_B2BSuite_StageName
+
+Write-Host "Resolved QA stage: $qaStage"
+Write-Host "Resolved B2B stage: $b2bStage"
+
+# If values are blank, fallback (temporary until variable group is fixed)
+if (-not $qaStage) { $qaStage = "Qa" }
+if (-not $b2bStage) { $b2bStage = "B2BSuite" }
+
 # Define the stage names
 $stageNames = @(
-    $env:HCC_QA_NewServices_Qa_StageName,
-    $env:HCC_QA_NewServices_B2B_StageName
+    $qaStage,
+    $b2bStage
 )
 
 # Track overall status
