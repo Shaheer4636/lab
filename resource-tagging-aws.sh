@@ -4,60 +4,55 @@ $stageNames = @(
     "$(HCC.QA.NewServices.B2B.StageName)"
 )
 
-# Var to track the overall status
+# Track overall status
 $allSucceededOrFailed = $true
 
-# Loop through stages
 foreach ($stageName in $stageNames) {
-    # Construct environment variable name
     $envVarName = "RELEASE_ENVIRONMENTS_${stageName}_STATUS"
+    Write-Output "Checking status for: $envVarName"
 
-    echo $envVarName
-
-    # Retrieve status from pipeline
     $status = Get-Content env:$envVarName
-
-    # Output the status for debugging purposes
     Write-Output "Status of ${stageName}: ${status}"
 
-    # Check if status is neither succeeded nor failed
     if ($status -ne "succeeded" -and $status -ne "failed") {
         $allSucceededOrFailed = $false
         break
     }
 }
 
-# Execute if all stages are either succeeded or failed
 if ($allSucceededOrFailed) {
+    Write-Output "All stages are done. Proceeding to copy from fileshare..."
 
-    Write-Output "All stages have either succeeded or failed. Copying files from fileshare..."
-    echo "echo $(System.DefaultWorkingDirectory)"
-    echo $(System.DefaultWorkingDirectory)
+    # Set environment variables
+    $env:AZCOPY_LOG_LOCATION = "$(System.DefaultWorkingDirectory)"
+    $env:AZCOPY_AUTO_LOGIN_TYPE = "MSI"
 
-    echo "set AZCOPY_LOG_LOCATION=$(System.DefaultWorkingDirectory)"
-    set AZCOPY_LOG_LOCATION=$(System.DefaultWorkingDirectory)
+    $azcopy = "$(System.DefaultWorkingDirectory)\azcopy.exe"
 
-    echo "set AZCOPY_AUTO_LOGIN_TYPE=MSI"
-    set AZCOPY_AUTO_LOGIN_TYPE=MSI
+    # Login
+    & $azcopy login --login-type=MSI --log-level=DEBUG --tenant-id "$(ReleasePipeline.TenantID)"
 
-    
-    echo "$(System.DefaultWorkingDirectory)\artifact\$(Build.BuildId)\azcopy.exe login --login-type=MSI --log-level=DEBUG --tenant-id "$(ReleasePipeline.TenantID)""
+    # Copy Allure Results
+    $allureSource = "$(ReleasePipeline.StorageAccount)/$(ReleasePipeline.ReportFolder)/$(Release.DefinitionName)/$(releasenumber)/allure-results/*"
+    $allureTarget = "$(System.DefaultWorkingDirectory)\allure-results"
+    Write-Output "Copying Allure results..."
+    & $azcopy copy $allureSource $allureTarget --recursive --log-level=DEBUG
 
-    $(System.DefaultWorkingDirectory)\artifact\$(Build.BuildId)\azcopy.exe login --login-type=MSI --log-level=DEBUG --tenant-id "$(ReleasePipeline.TenantID)"
+    # Copy Cypress Results
+    $cypressSource = "$(ReleasePipeline.StorageAccount)/$(ReleasePipeline.ReportFolder)/$(Release.DefinitionName)/$(releasenumber)/cypress/results/*"
+    $cypressTarget = "$(System.DefaultWorkingDirectory)\cypress\results"
+    Write-Output "Copying Cypress results..."
+    & $azcopy copy $cypressSource $cypressTarget --recursive --log-level=DEBUG
 
-    
-    echo "$(System.DefaultWorkingDirectory)\artifact\$(Build.BuildId)\azcopy.exe copy "$(ReleasePipeline.StorageAccount)/$(ReleasePipeline.ReportFolder)/$(Release.DefinitionName)/$(releasenumber)/allure-results/*" "$(System.DefaultWorkingDirectory)\artifact\$(Build.BuildId)\allure-results" --recursive --log-level=DEBUG"
-    
-    $(System.DefaultWorkingDirectory)\artifact\$(Build.BuildId)\azcopy.exe copy "$(ReleasePipeline.StorageAccount)/$(ReleasePipeline.ReportFolder)/$(Release.DefinitionName)/$(releasenumber)/allure-results/*" "$(System.DefaultWorkingDirectory)\artifact\$(Build.BuildId)\allure-results" --recursive --log-level=DEBUG
-
-
-
-echo "$(System.DefaultWorkingDirectory)\artifact\$(Build.BuildId)\azcopy.exe copy "$(ReleasePipeline.StorageAccount)/$(ReleasePipeline.ReportFolder)/$(Release.DefinitionName)/$(releasenumber)/cypress/results/*" "$(System.DefaultWorkingDirectory)\artifact\$(Build.BuildId)\cypress\results" --recursive --log-level=DEBUG"
-    
-    $(System.DefaultWorkingDirectory)\artifact\$(Build.BuildId)\azcopy.exe copy "$(ReleasePipeline.StorageAccount)/$(ReleasePipeline.ReportFolder)/$(Release.DefinitionName)/$(releasenumber)/cypress/results/*" "$(System.DefaultWorkingDirectory)\artifact\$(Build.BuildId)\cypress\results" --recursive --log-level=DEBUG
-
-
-    # Invoke-MyCommand
+    Write-Output "Copy operations complete."
 } else {
-    Write-Output "One or more test stages have a status other than succeeded or failed."
+    Write-Output "One or more test stages are not complete. Skipping copy."
 }
+
+
+
+,,
+
+cd "$(System.DefaultWorkingDirectory)"
+npx allure generate "allure-results" --clean -o "allure-report-full"
+
