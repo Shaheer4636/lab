@@ -1,35 +1,37 @@
 #!/bin/bash
 
-echo "========== Untagged EC2 Instances =========="
+echo "========== Untagged Resources =========="
+
+# EC2 Instances
 for instance_id in $(aws ec2 describe-instances --query "Reservations[].Instances[].InstanceId" --output text); do
   tags=$(aws ec2 describe-tags --filters "Name=resource-id,Values=$instance_id" --query "Tags" --output json)
   if [ "$tags" == "[]" ]; then
-    echo "$instance_id"
+    echo "EC2       | $instance_id"
   fi
 done
 
-echo -e "\n========== Untagged RDS Instances =========="
+# RDS Instances
 for db in $(aws rds describe-db-instances --query "DBInstances[].DBInstanceIdentifier" --output text); do
   arn=$(aws rds describe-db-instances --db-instance-identifier "$db" --query "DBInstances[0].DBInstanceArn" --output text)
   tags=$(aws rds list-tags-for-resource --resource-name "$arn" --query "TagList" --output json)
   if [ "$tags" == "[]" ]; then
-    echo "$db"
+    echo "RDS       | $db"
   fi
 done
 
-echo -e "\n========== Untagged S3 Buckets =========="
+# S3 Buckets
 for bucket in $(aws s3api list-buckets --query "Buckets[].Name" --output text); do
   tags=$(aws s3api get-bucket-tagging --bucket "$bucket" --query "TagSet" --output json 2>/dev/null)
   if [ "$tags" == "" ]; then
-    echo "$bucket"
+    echo "S3        | $bucket"
   fi
 done
 
-echo -e "\n========== Untagged Lambda Functions =========="
+# Lambda Functions
 for func in $(aws lambda list-functions --query "Functions[].FunctionName" --output text); do
   arn=$(aws lambda get-function --function-name "$func" --query "Configuration.FunctionArn" --output text)
   tags=$(aws lambda list-tags --resource "$arn" --query "Tags" --output json)
   if [ "$tags" == "{}" ]; then
-    echo "$func"
+    echo "Lambda    | $func"
   fi
 done
