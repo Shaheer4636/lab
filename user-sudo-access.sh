@@ -6,3 +6,7 @@ az artifacts universal download `
   --name "dowitcher" `
   --version "1.1.14" `
   --path .
+
+
+
+BN6rOwW3wXqCfYd0HLkt0PcFxSh5cFdh4eiTxvtkEiGwbNO9oamSJQQJ99BGACAAAAA549A1AAASAZDO3sqr
