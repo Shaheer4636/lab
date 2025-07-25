@@ -8,8 +8,8 @@ BACKUP="/etc/ssh/sshd_config.bak.$(date +%F-%H%M%S)"
 echo "📁 Backing up $SSHD_CONFIG to $BACKUP"
 sudo cp "$SSHD_CONFIG" "$BACKUP"
 
-echo "🧹 Removing broken Match User ec2-user block (if exists)..."
-sudo sed -i '/^Match User ec2-user/,+5d' "$SSHD_CONFIG"
+echo "🧹 Removing all Match blocks from SSH config..."
+sudo sed -i '/^Match /,$d' "$SSHD_CONFIG"
 
 echo "🔧 Setting global SSH password auth config..."
 sudo sed -i 's/^#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/' "$SSHD_CONFIG" || echo "PasswordAuthentication yes" | sudo tee -a "$SSHD_CONFIG"
@@ -21,7 +21,7 @@ if sudo sshd -t; then
     echo "✅ SSH config is valid."
     echo "🔁 Restarting sshd..."
     sudo systemctl restart sshd
-    echo "✅ SSHD restarted. SFTP on port 22 should now work for ec2-user."
+    echo "✅ SSHD restarted. You can now connect via WinSCP on port 22 with password."
 else
-    echo "❌ Invalid SSH config. Restore from backup: $BACKUP"
+    echo "❌ SSH config still broken. Restore from: $BACKUP"
 fi
