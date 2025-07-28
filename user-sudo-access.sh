@@ -1,77 +1,76 @@
-
 #!/bin/bash
 
-set -e
+# Install vsftpd and OpenSSL
+yum install -y vsftpd openssl
 
-echo "[+] Installing vsftpd and OpenSSL..."
-if command -v yum >/dev/null; then
-    yum install -y vsftpd openssl
-elif command -v apt >/dev/null; then
-    apt update && apt install -y vsftpd openssl
-else
-    echo "Unsupported package manager. Install vsftpd and openssl manually."
-    exit 1
-fi
-
-echo "[+] Creating SSL certificate..."
-mkdir -p /etc/ssl/private
+# Generate SSL Certificate
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -subj "/C=US/ST=State/L=City/O=Org/OU=Dept/CN=$(hostname)" \
-    -keyout /etc/ssl/private/vsftpd.key \
-    -out /etc/ssl/private/vsftpd.crt
+-keyout /etc/ssl/private/vsftpd.key \
+-out /etc/ssl/certs/vsftpd.crt \
+-subj "/C=US/ST=FTP/L=Server/O=SelfSigned/OU=FTPD/CN=$(hostname)"
 
-echo "[+] Backing up old config..."
-cp /etc/vsftpd/vsftpd.conf /etc/vsftpd/vsftpd.conf.bak || true
+# Backup existing config
+cp /etc/vsftpd/vsftpd.conf /etc/vsftpd/vsftpd.conf.bak
 
-echo "[+] Writing new vsftpd.conf for implicit FTPS on port 990..."
-PUBLIC_IP=$(curl -s ifconfig.me)
-cat > /etc/vsftpd/vsftpd.conf <<EOF
+# Write new vsftpd.conf
+cat <<EOF > /etc/vsftpd/vsftpd.conf
 listen=YES
 listen_ipv6=NO
 anonymous_enable=NO
 local_enable=YES
 write_enable=YES
+local_umask=022
+dirmessage_enable=YES
+use_localtime=YES
+xferlog_enable=YES
+connect_from_port_20=YES
 chroot_local_user=YES
-allow_writeable_chroot=YES
 
-rsa_cert_file=/etc/ssl/private/vsftpd.crt
-rsa_private_key_file=/etc/ssl/private/vsftpd.key
-ssl_enable=YES
-require_ssl_reuse=NO
-ssl_tlsv1=YES
-ssl_tlsv1_1=YES
-ssl_tlsv1_2=YES
-ssl_tlsv1_3=NO
-ssl_ciphers=HIGH
-
-implicit_ssl=YES
-listen_port=990
-
+# Passive mode
 pasv_enable=YES
 pasv_min_port=40000
 pasv_max_port=40010
-pasv_address=$PUBLIC_IP
+pasv_address=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
 
-ftpd_banner=Welcome to Secure FTPS on port 990
+# SSL settings
+ssl_enable=YES
+allow_anon_ssl=NO
+force_local_data_ssl=YES
+force_local_logins_ssl=YES
+ssl_tlsv1=YES
+ssl_tlsv1_1=YES
+ssl_tlsv1_2=YES
+ssl_sslv2=NO
+ssl_sslv3=NO
+require_ssl_reuse=NO
+ssl_ciphers=HIGH
+rsa_cert_file=/etc/ssl/certs/vsftpd.crt
+rsa_private_key_file=/etc/ssl/private/vsftpd.key
+
+# FTPS implicit
+implicit_ssl=YES
+listen_port=990
 EOF
 
-echo "[+] Creating FTP user 'ec2-user' with password..."
-echo "ec2-user:ARKANSAS@123" | chpasswd
-usermod -s /sbin/nologin ec2-user
-chmod 755 /home/ec2-user
+# Ensure ec2-user is allowed
+sed -i '/^ec2-user/d' /etc/vsftpd/user_list
+echo "ec2-user" >> /etc/vsftpd/user_list
+echo "ec2-user" >> /etc/vsftpd/ftpusers
 
-echo "[+] Opening ports in firewall..."
-if command -v firewall-cmd >/dev/null; then
-    firewall-cmd --permanent --add-port=990/tcp
-    firewall-cmd --permanent --add-port=40000-40010/tcp
-    firewall-cmd --reload
-elif command -v iptables >/dev/null; then
-    iptables -I INPUT -p tcp --dport 990 -j ACCEPT
-    iptables -I INPUT -p tcp --dport 40000:40010 -j ACCEPT
-fi
+# Set password (optional override)
+echo -e "ARKANSAS@123\nARKANSAS@123" | passwd ec2-user
 
-echo "[+] Restarting vsftpd service..."
+# Fix permissions
+chmod 600 /etc/ssl/private/vsftpd.key
+chown root:root /etc/ssl/private/vsftpd.key
+
+# Open firewall ports
+firewall-cmd --add-port=990/tcp --permanent
+firewall-cmd --add-port=40000-40010/tcp --permanent
+firewall-cmd --reload
+
+# Restart service
 systemctl restart vsftpd
 systemctl enable vsftpd
 
-echo "[+] FTPS Implicit is ready on port 990 for user ec2-user (password: ARKANSAS@123)"
+echo "✅ FTPS server ready on port 990 for ec2-user (pass: ARKANSAS@123)"
