@@ -2,10 +2,10 @@
 
 set -e
 
-echo "🔧 Installing vsftpd and required tools..."
+echo "🔧 Installing dependencies..."
 yum install -y vsftpd openssl firewalld policycoreutils-python-utils
 
-echo "🔐 Creating TLS cert if missing..."
+echo "🔐 Generating TLS certificate if not present..."
 mkdir -p /etc/ssl/private /etc/ssl/certs
 if [ ! -f /etc/ssl/certs/ftp-cert.pem ]; then
   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
@@ -16,7 +16,17 @@ if [ ! -f /etc/ssl/certs/ftp-cert.pem ]; then
   chmod 644 /etc/ssl/certs/ftp-cert.pem
 fi
 
-echo "📝 Writing vsftpd config for IMPLICIT TLS (port 990)..."
+echo "🔧 Fixing shell for ec2-user..."
+chsh -s /bin/bash ec2-user || true
+
+echo "🔑 Setting password for ec2-user..."
+echo "ec2-user:ARKANSAS@123" | chpasswd
+
+echo "👤 Allowing ec2-user in vsftpd user_list..."
+touch /etc/vsftpd/user_list
+grep -qxF 'ec2-user' /etc/vsftpd/user_list || echo 'ec2-user' >> /etc/vsftpd/user_list
+
+echo "📝 Writing vsftpd.conf for IMPLICIT TLS (port 990)..."
 cat <<EOF > /etc/vsftpd/vsftpd.conf
 listen=YES
 listen_ipv6=NO
@@ -49,16 +59,20 @@ use_localtime=YES
 xferlog_enable=YES
 connect_from_port_20=YES
 xferlog_std_format=YES
-ftpd_banner=Welcome to Secure Implicit FTPS Server.
+ftpd_banner=Welcome to Secure Implicit FTPS.
 chroot_local_user=YES
 allow_writeable_chroot=YES
 
 pasv_enable=YES
 pasv_min_port=30000
 pasv_max_port=30100
+
+userlist_enable=YES
+userlist_file=/etc/vsftpd/user_list
+userlist_deny=NO
 EOF
 
-echo "🔓 Opening firewall ports..."
+echo "🧱 Opening firewall ports..."
 firewall-cmd --permanent --add-port=990/tcp
 firewall-cmd --permanent --add-port=30000-30100/tcp
 firewall-cmd --reload
@@ -72,4 +86,5 @@ echo "🔁 Restarting vsftpd..."
 systemctl restart vsftpd
 systemctl enable vsftpd
 
-echo "✅ IMPLICIT TLS FTPS now running on port 990"
+echo "✅ IMPLICIT TLS FTPS setup complete on port 990"
+
