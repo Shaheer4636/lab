@@ -1,75 +1,65 @@
 #!/bin/bash
-
 set -e
 
-echo "🔐 Resetting password for ec2-user..."
-echo "ec2-user:ARKANSAS@123" | chpasswd
-usermod -s /bin/bash ec2-user
-mkdir -p /home/ec2-user
-chown ec2-user:ec2-user /home/ec2-user
-chmod 755 /home/ec2-user
+USER="ec2-user"
+PASS="ARKANSAS@123"
 
-echo "👤 Ensuring ec2-user is NOT blocked by vsftpd..."
-sed -i '/^ec2-user$/d' /etc/vsftpd/ftpusers || true
-sed -i '/^ec2-user$/d' /etc/ftpusers || true
+echo "[*] Installing required packages..."
+yum install -y vsftpd openssl policycoreutils-python-utils
 
-echo "📃 Whitelisting ec2-user..."
-touch /etc/vsftpd/user_list
-grep -qxF "ec2-user" /etc/vsftpd/user_list || echo "ec2-user" >> /etc/vsftpd/user_list
+echo "[*] Creating TLS cert..."
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout /etc/ssl/private/vsftpd.key \
+  -out /etc/ssl/certs/vsftpd.crt \
+  -subj "/C=US/ST=NA/L=NA/O=FTPS/CN=localhost"
 
-echo "🛡️ Rewriting PAM rules to allow all local users..."
-cat <<EOF > /etc/pam.d/vsftpd
-auth       required     pam_unix.so
-account    required     pam_unix.so
-session    required     pam_unix.so
-EOF
+echo "[*] Backing up original config..."
+cp /etc/vsftpd/vsftpd.conf /etc/vsftpd/vsftpd.conf.bak
 
-echo "⚙️ Writing safe vsftpd config for implicit TLS on port 990..."
-cat <<EOF > /etc/vsftpd/vsftpd.conf
+cat > /etc/vsftpd/vsftpd.conf <<EOF
 listen=YES
-listen_ipv6=NO
 listen_port=990
-
-ssl_enable=YES
-implicit_ssl=YES
-
-rsa_cert_file=/etc/ssl/certs/ftp-cert.pem
-rsa_private_key_file=/etc/ssl/private/ftp-key.pem
-
-force_local_logins_ssl=YES
-force_local_data_ssl=YES
-
-ssl_tlsv1=YES
-ssl_tlsv1_1=YES
-ssl_tlsv1_2=YES
-ssl_tlsv1_3=YES
-ssl_sslv2=NO
-ssl_sslv3=NO
-require_ssl_reuse=NO
-ssl_ciphers=HIGH
-
+connect_from_port_20=YES
+anonymous_enable=NO
 local_enable=YES
 write_enable=YES
 chroot_local_user=YES
 allow_writeable_chroot=YES
-
-userlist_enable=YES
-userlist_deny=NO
-userlist_file=/etc/vsftpd/user_list
-
-pasv_enable=YES
-pasv_min_port=30000
-pasv_max_port=30100
-
-log_ftp_protocol=YES
-xferlog_enable=YES
-xferlog_std_format=YES
-dirmessage_enable=YES
-use_localtime=YES
-ftpd_banner=FTPS Active
+user_sub_token=\$USER
+local_root=/home/\$USER
+pam_service_name=vsftpd
+ssl_enable=YES
+require_ssl_reuse=NO
+ssl_tlsv1=YES
+ssl_tlsv1_1=YES
+ssl_tlsv1_2=YES
+ssl_ciphers=HIGH
+rsa_cert_file=/etc/ssl/certs/vsftpd.crt
+rsa_private_key_file=/etc/ssl/private/vsftpd.key
+force_local_data_ssl=YES
+force_local_logins_ssl=YES
+implicit_ssl=YES
+seccomp_sandbox=NO
 EOF
 
-echo "🔁 Restarting vsftpd..."
+echo "[*] Setting user password..."
+echo "${USER}:${PASS}" | chpasswd
+
+echo "[*] Fixing home directory and permissions..."
+chmod 755 /home/${USER}
+
+echo "[*] Adjusting SELinux policies..."
+setsebool -P ftpd_full_access 1
+semanage fcontext -a -t public_content_t "/home/${USER}(/.*)?"
+restorecon -Rv /home/${USER}
+
+echo "[*] Opening firewall ports..."
+firewall-cmd --add-port=990/tcp --permanent
+firewall-cmd --add-port=30000-30100/tcp --permanent
+firewall-cmd --reload
+
+echo "[*] Enabling and restarting vsftpd..."
+systemctl enable vsftpd
 systemctl restart vsftpd
 
-echo "✅ ec2-user FTPS login should now work on port 990 with password ARKANSAS@123"
+echo "[✔] FTPS server is now running on port 990 for user: ${USER}"
