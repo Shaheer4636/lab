@@ -2,28 +2,22 @@
 
 set -e
 
-USER="ec2-user"
-PASS="ARKANSAS@123"
-HOME="/home/$USER"
-CONF="/etc/vsftpd/vsftpd.conf"
+echo "🔓 Disabling SELinux temporarily to test..."
+setenforce 0 || echo "SELinux already permissive."
 
-echo "🔧 Forcing valid shell..."
-usermod -s /bin/bash $USER
+echo "👤 Verifying user config..."
+usermod -s /bin/bash ec2-user
+echo "ec2-user:ARKANSAS@123" | chpasswd
+mkdir -p /home/ec2-user
+chown ec2-user:ec2-user /home/ec2-user
+chmod 755 /home/ec2-user
 
-echo "🔐 Resetting password..."
-echo "$USER:$PASS" | chpasswd
-
-echo "📁 Fixing home directory..."
-mkdir -p "$HOME"
-chown $USER:$USER "$HOME"
-chmod 755 "$HOME"
-
-echo "👤 Whitelisting user..."
+echo "👁️ Whitelisting ec2-user..."
 touch /etc/vsftpd/user_list
-grep -qxF "$USER" /etc/vsftpd/user_list || echo "$USER" >> /etc/vsftpd/user_list
+grep -qxF "ec2-user" /etc/vsftpd/user_list || echo "ec2-user" >> /etc/vsftpd/user_list
 
-echo "⚙️ Updating vsftpd.conf for implicit FTPS..."
-cat <<EOF > $CONF
+echo "⚙️ Enforcing vsftpd fallback config..."
+cat <<EOF > /etc/vsftpd/vsftpd.conf
 listen=YES
 listen_ipv6=NO
 listen_port=990
@@ -45,32 +39,32 @@ ssl_sslv3=NO
 require_ssl_reuse=NO
 ssl_ciphers=HIGH
 
-anonymous_enable=NO
 local_enable=YES
 write_enable=YES
-local_umask=022
-use_localtime=YES
-dirmessage_enable=YES
-xferlog_enable=YES
-connect_from_port_20=YES
-xferlog_std_format=YES
-ftpd_banner=Welcome to ec2-user's FTPS!
+anon_upload_enable=NO
+anon_mkdir_write_enable=NO
 chroot_local_user=YES
 allow_writeable_chroot=YES
+userlist_enable=YES
+userlist_deny=NO
+userlist_file=/etc/vsftpd/user_list
 
 pasv_enable=YES
 pasv_min_port=30000
 pasv_max_port=30100
 
-userlist_enable=YES
-userlist_file=/etc/vsftpd/user_list
-userlist_deny=NO
+log_ftp_protocol=YES
+xferlog_enable=YES
+xferlog_std_format=YES
+dirmessage_enable=YES
+use_localtime=YES
+ftpd_banner=Welcome.
 EOF
 
 echo "🔁 Restarting vsftpd..."
 systemctl restart vsftpd
 
-echo "🔍 Logging last 50 vsftpd messages (for debugging)..."
-tail -n 50 /var/log/messages | grep -i vsftpd || echo "⚠️ No vsftpd logs found."
-
-echo "✅ ec2-user FTPS setup forced. Try login now."
+echo "🔍 Tailing logs for login attempt..."
+echo "Try WinSCP login now and leave this running:"
+echo "---------------------------------------------"
+tail -f /var/log/messages | grep -i vsftpd
