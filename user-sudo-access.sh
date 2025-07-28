@@ -1,89 +1,65 @@
 #!/bin/bash
-set -e
 
 USER="ec2-user"
 PASS="ARKANSAS@123"
-PUBLIC_IP="3.82.115.255"  # Replace with your EC2 public IP
+HOME_DIR="/home/${USER}"
 
-echo "🔧 Fixing password and shell..."
-echo "$USER:$PASS" | chpasswd
-usermod -s /bin/bash $USER
-chmod 755 /home/$USER
-chown $USER:$USER /home/$USER
+echo "🔒 Setting password for ${USER}..."
+echo "${USER}:${PASS}" | chpasswd
 
-echo "✅ Removing user from deny lists..."
-sed -i "/^$USER$/d" /etc/ftpusers || true
-sed -i "/^$USER$/d" /etc/vsftpd/ftpusers || true
+echo "📁 Ensuring home directory permissions..."
+chown ${USER}:${USER} "$HOME_DIR"
+chmod 755 "$HOME_DIR"
 
-echo "✅ Whitelisting user..."
-touch /etc/vsftpd/user_list
-grep -qxF "$USER" /etc/vsftpd/user_list || echo "$USER" >> /etc/vsftpd/user_list
+echo "🔐 Installing vsftpd and OpenSSL if needed..."
+yum install -y vsftpd openssl || apt install -y vsftpd openssl
 
-echo "🔧 Updating PAM config..."
-cat <<EOF > /etc/pam.d/vsftpd
-auth       required     pam_unix.so
-account    required     pam_unix.so
-session    required     pam_unix.so
-EOF
+echo "📜 Generating self-signed SSL certificate..."
+mkdir -p /etc/ssl/private
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -subj "/CN=$(hostname)" \
+  -keyout /etc/ssl/private/vsftpd.key \
+  -out /etc/ssl/private/vsftpd.crt
 
-echo "🔐 Regenerating strong TLS cert..."
-mkdir -p /etc/vsftpd/ssl
-openssl req -x509 -nodes -days 365 \
-  -newkey rsa:2048 \
-  -keyout /etc/vsftpd/ssl/vsftpd.key \
-  -out /etc/vsftpd/ssl/vsftpd.crt \
-  -subj "/C=US/ST=None/L=None/O=None/CN=$PUBLIC_IP"
-
-echo "⚙️ Writing final vsftpd.conf..."
+echo "⚙️ Writing vsftpd config for Implicit FTPS on port 990..."
 cat > /etc/vsftpd/vsftpd.conf <<EOF
 listen=YES
-listen_port=990
 listen_ipv6=NO
-ssl_enable=YES
-implicit_ssl=YES
-require_ssl_reuse=NO
-
-rsa_cert_file=/etc/vsftpd/ssl/vsftpd.crt
-rsa_private_key_file=/etc/vsftpd/ssl/vsftpd.key
-
-ssl_tlsv1=NO
-ssl_tlsv1_1=NO
-ssl_tlsv1_2=YES
-ssl_tlsv1_3=YES
-ssl_sslv2=NO
-ssl_sslv3=NO
-ssl_ciphers=HIGH
-
+anonymous_enable=NO
 local_enable=YES
 write_enable=YES
 chroot_local_user=YES
 allow_writeable_chroot=YES
 
-userlist_enable=YES
-userlist_file=/etc/vsftpd/user_list
-userlist_deny=NO
-
-force_local_logins_ssl=YES
+rsa_cert_file=/etc/ssl/private/vsftpd.crt
+rsa_private_key_file=/etc/ssl/private/vsftpd.key
+ssl_enable=YES
 force_local_data_ssl=YES
+force_local_logins_ssl=YES
+ssl_tlsv1=YES
+ssl_tlsv1_1=YES
+ssl_tlsv1_2=YES
+ssl_sslv2=NO
+ssl_sslv3=NO
+require_ssl_reuse=NO
+ssl_ciphers=HIGH
 
 pasv_enable=YES
-pasv_min_port=30000
-pasv_max_port=30100
-pasv_address=$PUBLIC_IP
-pasv_addr_resolve=NO
+pasv_min_port=40000
+pasv_max_port=40010
+pasv_address=$(curl -s ifconfig.me)
 
-seccomp_sandbox=NO
-xferlog_enable=YES
-log_ftp_protocol=YES
+listen_port=990
+ftpd_banner=Welcome to secure FTPS.
 EOF
 
-echo "🔓 Opening firewall ports..."
-firewall-cmd --add-port=990/tcp --permanent
-firewall-cmd --add-port=30000-30100/tcp --permanent
-firewall-cmd --reload
+echo "🔓 Adjusting firewall..."
+iptables -I INPUT -p tcp --dport 990 -j ACCEPT
+iptables -I INPUT -p tcp --dport 40000:40010 -j ACCEPT
+setsebool -P ftp_home_dir 1 2>/dev/null || true
 
 echo "🔁 Restarting vsftpd..."
 systemctl restart vsftpd
+systemctl enable vsftpd
 
-echo "✅ FTPS with Implicit TLS ready on $PUBLIC_IP:990"
-echo "➡️ Login as: $USER / $PASS"
+echo "✅ Setup complete! Try connecting to FTPS on port 990 using ec2-user / $PASS"
