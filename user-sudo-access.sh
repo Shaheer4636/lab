@@ -13,25 +13,15 @@ systemctl enable --now sshd
 systemctl enable --now vsftpd
 systemctl enable --now firewalld
 
-echo "📁 Creating SFTP user directory..."
-useradd -m sftpuser
-echo "sftpuser:StrongPassword@123" | chpasswd
-mkdir -p /home/sftpuser/.ssh
-chmod 700 /home/sftpuser/.ssh
-chown sftpuser:sftpuser /home/sftpuser/.ssh
+echo "🔐 Setting password for ec2-user..."
+echo "ec2-user:ARKANSAS@123" | chpasswd
 
-echo "🔐 Generating SSH key pair if needed..."
-if [ ! -f /home/sftpuser/.ssh/authorized_keys ]; then
-    su - sftpuser -c "ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa"
-    cat /home/sftpuser/.ssh/id_rsa.pub > /home/sftpuser/.ssh/authorized_keys
-fi
+echo "📁 Ensuring .ssh directory is correct..."
+mkdir -p /home/ec2-user/.ssh
+chmod 700 /home/ec2-user/.ssh
+chown ec2-user:ec2-user /home/ec2-user/.ssh
 
-chmod 600 /home/sftpuser/.ssh/authorized_keys
-chown sftpuser:sftpuser /home/sftpuser/.ssh/authorized_keys
-
-echo "✅ SSH for SFTP is ready on port 22"
-
-echo "🔐 Generating self-signed TLS certificate for FTPS..."
+echo "🔐 Generating TLS certificate for FTPS..."
 mkdir -p /etc/ssl/private
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout /etc/ssl/private/ftp-key.pem \
@@ -76,21 +66,27 @@ pasv_max_port=30100
 listen_port=990
 EOF
 
-echo "🧱 Allowing ports in firewall..."
+echo "🧱 Allowing firewall ports..."
 firewall-cmd --permanent --add-port=22/tcp
 firewall-cmd --permanent --add-port=990/tcp
 firewall-cmd --permanent --add-port=30000-30100/tcp
 firewall-cmd --reload
 
-echo "🔐 Updating SELinux for vsftpd to allow FTPS..."
+echo "🔐 Configuring SELinux..."
 setsebool -P allow_ftpd_full_access 1
 setsebool -P ftp_home_dir 1
 semanage port -a -t ftp_port_t -p tcp 990 || true
 semanage port -a -t ftp_data_port_t -p tcp 30000-30100 || true
 
-echo "🔁 Restarting services..."
-systemctl restart vsftpd
-systemctl restart sshd
+echo "🔧 Enabling SSH password authentication..."
+sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
 
-echo "✅✅ All done! SFTP is available on port 22, FTPS on port 990."
-echo "➡️ Connect as user: sftpuser / StrongPassword@123"
+echo "🔁 Restarting services..."
+systemctl restart sshd
+systemctl restart vsftpd
+
+echo "✅✅ Setup complete!"
+echo "➡️ SFTP (port 22) & FTPS (port 990) both enabled"
+echo "➡️ Username: ec2-user"
+echo "➡️ Password: ARKANSAS@123"
