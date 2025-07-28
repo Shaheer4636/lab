@@ -2,82 +2,80 @@
 
 set -e
 
-FTP_USER="ec2-user"
-FTP_PASS="ARKANSAS@123"
-CERT_DIR="/etc/ssl/private"
-CERT_FILE="$CERT_DIR/vsftpd.pem"
-CONF_FILE="/etc/vsftpd/vsftpd-990.conf"
+echo ">>> Installing required packages..."
+yum install -y vsftpd openssl firewalld policycoreutils-python-utils
 
-echo "[+] Installing required packages..."
-yum install -y vsftpd openssl policycoreutils-python-utils
+echo ">>> Creating self-signed SSL certificate..."
+mkdir -p /etc/ssl/private
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout /etc/ssl/private/vsftpd.key \
+  -out /etc/ssl/private/vsftpd.pem \
+  -subj "/C=US/ST=FTP/L=Server/O=SelfSigned/OU=FTPD/CN=$(hostname)"
 
-echo "[+] Generating self-signed certificate..."
-mkdir -p $CERT_DIR
-openssl req -x509 -nodes -days 365 \
-  -subj "/CN=ftp-server" \
-  -newkey rsa:2048 \
-  -keyout $CERT_FILE \
-  -out $CERT_FILE
-
-chmod 600 $CERT_FILE
-chown root:root $CERT_FILE
-
-echo "[+] Writing vsftpd config for implicit FTPS..."
-cat > $CONF_FILE <<EOF
+echo ">>> Writing vsftpd.conf for Implicit TLS..."
+cat > /etc/vsftpd/vsftpd.conf <<EOF
 listen=YES
 listen_ipv6=NO
 ssl_enable=YES
 implicit_ssl=YES
-rsa_cert_file=$CERT_FILE
-rsa_private_key_file=$CERT_FILE
+rsa_cert_file=/etc/ssl/private/vsftpd.pem
+rsa_private_key_file=/etc/ssl/private/vsftpd.key
 force_local_logins_ssl=YES
 force_local_data_ssl=YES
+ssl_tlsv1=YES
+ssl_tlsv1_2=YES
+ssl_tlsv1_3=YES
+anonymous_enable=NO
 local_enable=YES
 write_enable=YES
-allow_anon_ssl=NO
-ssl_tlsv1=YES
-ssl_sslv2=NO
-ssl_sslv3=NO
-anonymous_enable=NO
+local_umask=022
+dirmessage_enable=YES
+xferlog_enable=YES
+connect_from_port_20=YES
+xferlog_std_format=YES
 pam_service_name=vsftpd
-user_sub_token=\$USER
-local_root=/home/\$USER
-chroot_local_user=YES
 pasv_enable=YES
 pasv_min_port=40000
 pasv_max_port=40100
-xferlog_enable=YES
-xferlog_std_format=YES
 EOF
 
-echo "[+] Creating systemd override for vsftpd..."
+echo ">>> Creating systemd override for port 990 config..."
 mkdir -p /etc/systemd/system/vsftpd.service.d
 cat > /etc/systemd/system/vsftpd.service.d/override.conf <<EOF
 [Service]
 ExecStart=
-ExecStart=/usr/sbin/vsftpd $CONF_FILE
+ExecStart=/usr/sbin/vsftpd /etc/vsftpd/vsftpd.conf
 EOF
 
-echo "[+] Enabling firewall for port 990..."
-firewall-cmd --permanent --add-port=990/tcp || true
-firewall-cmd --permanent --add-port=40000-40100/tcp || true
-firewall-cmd --reload || true
+echo ">>> Opening firewall ports..."
+systemctl enable firewalld --now
+firewall-cmd --permanent --add-port=990/tcp
+firewall-cmd --permanent --add-port=40000-40100/tcp
+firewall-cmd --reload
 
-echo "[+] Configuring SELinux if applicable..."
+echo ">>> Enabling SELinux booleans (ignore if disabled)..."
 setsebool -P ftpd_full_access 1 || true
-setsebool -P allow_ftpd_anon_write=1 || true
-setsebool -P ftp_home_dir=1 || true
+setsebool -P allow_ftpd_anon_write 1 || true
+setsebool -P allow_ftpd_use_cifs 1 || true
 
-echo "[+] Ensuring user home permissions..."
-usermod -d /home/$FTP_USER $FTP_USER || true
-chmod 755 /home/$FTP_USER
-echo "$FTP_PASS" | passwd --stdin $FTP_USER
+echo ">>> Ensuring ec2-user exists and has home dir..."
+id ec2-user &>/dev/null || useradd ec2-user
+mkdir -p /home/ec2-user
+chown ec2-user:ec2-user /home/ec2-user
+chmod 755 /home/ec2-user
+echo "ec2-user:ARKANSAS@123" | chpasswd
 
-echo "[+] Reloading systemd and restarting vsftpd..."
+echo ">>> Reloading systemd and restarting vsftpd..."
 systemctl daemon-reexec
 systemctl daemon-reload
 systemctl restart vsftpd
 
-sleep 2
-echo "[+] Verifying port 990 is listening..."
-ss -tuln | grep :990 || echo "ERROR: Port 990 is NOT listening"
+echo ">>> Verifying vsftpd is listening on port 990..."
+ss -tuln | grep :990 && echo "SUCCESS: FTPS is listening on port 990!" || echo "FAIL: Port 990 not listening!"
+
+echo ">>> DONE. Use FileZilla or WinSCP with:"
+echo "- Host: Your EC2 Public IP"
+echo "- Port: 990"
+echo "- Protocol: FTPS (Implicit TLS)"
+echo "- User: ec2-user"
+echo "- Password: ARKANSAS@123"
