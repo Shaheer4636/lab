@@ -1,65 +1,76 @@
 #!/bin/bash
 set -e
 
+# Set these as needed
 USER="ec2-user"
 PASS="ARKANSAS@123"
+PUBLIC_IP="3.82.115.255"  # Replace with your EC2 public IP
 
-echo "[*] Installing required packages..."
+echo "[1] Setting password for $USER..."
+echo "$USER:$PASS" | chpasswd
+
+echo "[2] Installing required packages..."
 yum install -y vsftpd openssl policycoreutils-python-utils
 
-echo "[*] Creating TLS cert..."
+echo "[3] Creating TLS cert (self-signed)..."
+mkdir -p /etc/vsftpd/ssl
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout /etc/ssl/private/vsftpd.key \
-  -out /etc/ssl/certs/vsftpd.crt \
-  -subj "/C=US/ST=NA/L=NA/O=FTPS/CN=localhost"
+  -subj "/C=US/ST=State/L=City/O=Org/OU=IT/CN=$PUBLIC_IP" \
+  -keyout /etc/vsftpd/ssl/vsftpd.key \
+  -out /etc/vsftpd/ssl/vsftpd.crt
 
-echo "[*] Backing up original config..."
-cp /etc/vsftpd/vsftpd.conf /etc/vsftpd/vsftpd.conf.bak
-
+echo "[4] Configuring vsftpd..."
 cat > /etc/vsftpd/vsftpd.conf <<EOF
 listen=YES
-listen_port=990
-connect_from_port_20=YES
+listen_ipv6=NO
 anonymous_enable=NO
 local_enable=YES
 write_enable=YES
 chroot_local_user=YES
 allow_writeable_chroot=YES
-user_sub_token=\$USER
-local_root=/home/\$USER
-pam_service_name=vsftpd
+
 ssl_enable=YES
-require_ssl_reuse=NO
+rsa_cert_file=/etc/vsftpd/ssl/vsftpd.crt
+rsa_private_key_file=/etc/vsftpd/ssl/vsftpd.key
 ssl_tlsv1=YES
-ssl_tlsv1_1=YES
-ssl_tlsv1_2=YES
+ssl_sslv2=NO
+ssl_sslv3=NO
+require_ssl_reuse=NO
 ssl_ciphers=HIGH
-rsa_cert_file=/etc/ssl/certs/vsftpd.crt
-rsa_private_key_file=/etc/ssl/private/vsftpd.key
+
 force_local_data_ssl=YES
 force_local_logins_ssl=YES
-implicit_ssl=YES
-seccomp_sandbox=NO
+
+pasv_enable=YES
+pasv_min_port=30000
+pasv_max_port=30100
+pasv_address=$PUBLIC_IP
+pasv_addr_resolve=NO
+
+user_sub_token=\$USER
+local_root=/home/\$USER
+userlist_enable=YES
+userlist_file=/etc/vsftpd/user_list
+userlist_deny=NO
+
+ftpd_banner=FTPS Active
 EOF
 
-echo "[*] Setting user password..."
-echo "${USER}:${PASS}" | chpasswd
+echo "[5] Whitelisting $USER for login..."
+grep -q "^$USER" /etc/vsftpd/user_list || echo "$USER" >> /etc/vsftpd/user_list
 
-echo "[*] Fixing home directory and permissions..."
-chmod 755 /home/${USER}
+echo "[6] Setting permissions..."
+chmod 755 /home/$USER
+chown $USER:$USER /home/$USER
 
-echo "[*] Adjusting SELinux policies..."
-setsebool -P ftpd_full_access 1
-semanage fcontext -a -t public_content_t "/home/${USER}(/.*)?"
-restorecon -Rv /home/${USER}
-
-echo "[*] Opening firewall ports..."
+echo "[7] Opening firewall ports..."
+firewall-cmd --add-service=ftp --permanent
 firewall-cmd --add-port=990/tcp --permanent
 firewall-cmd --add-port=30000-30100/tcp --permanent
 firewall-cmd --reload
 
-echo "[*] Enabling and restarting vsftpd..."
+echo "[8] Enabling & restarting vsftpd..."
 systemctl enable vsftpd
 systemctl restart vsftpd
 
-echo "[✔] FTPS server is now running on port 990 for user: ${USER}"
+echo "[✔] FTPS setup complete for $USER. Connect using FTPS on port 990 with passive mode enabled."
