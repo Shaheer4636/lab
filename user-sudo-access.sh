@@ -1,4 +1,4 @@
-# ------------------ SET FIXED CONFIG ------------------
+# ------------------ CONFIGURATION ------------------
 RESOURCE_GROUP="vm-rdp-test"
 LOCATION="eastus"
 VNET_NAME="vm-rdp-vnet"
@@ -10,10 +10,11 @@ PUBLIC_IP_NAME="bastion-pip"
 ADMIN_USERNAME="adminuser"
 ADMIN_PASSWORD="P@ssw0rd1234!"
 VM_SIZE="Standard_D2s_v3"
-DISK_SIZE=64
+OS_DISK_SIZE=200
+SUBSCRIPTION="Astadia Dev"
 
 # ------------------ SET SUBSCRIPTION ------------------
-az account set --subscription "Astadia Dev"
+az account set --subscription "$SUBSCRIPTION"
 
 # ------------------ CREATE RESOURCE GROUP ------------------
 az group create \
@@ -61,13 +62,13 @@ az vm create \
   --admin-password $ADMIN_PASSWORD \
   --vnet-name $VNET_NAME \
   --subnet $VM_SUBNET_NAME \
-  --os-disk-size-gb $DISK_SIZE \
+  --os-disk-size-gb $OS_DISK_SIZE \
   --nsg "" \
   --public-ip-address "" \
   --license-type Windows_Server \
   --location $LOCATION
 
-# ------------------ CREATE 2 ADDITIONAL USERS ------------------
+# ------------------ CREATE 2 ADDITIONAL RDP USERS ------------------
 az vm run-command invoke \
   --resource-group $RESOURCE_GROUP \
   --name $VM_NAME \
