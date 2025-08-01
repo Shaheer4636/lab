@@ -1,62 +1,15 @@
-# ---------------------- SET FIXED VALUES ----------------------
-RESOURCE_GROUP="vm-rdp-test"
-LOCATION="eastus"
-VNET_NAME="vm-rdp-vnet"
-VM_SUBNET_NAME="vm-subnet"
-BASTION_SUBNET_NAME="AzureBastionSubnet"
-VM_NAME="rdp-vm"
-BASTION_NAME="bastion-host"
-PUBLIC_IP_NAME="bastion-pip"
-ADMIN_USERNAME="azureadmin"
-ADMIN_PASSWORD="P@ssw0rd1234!"  # Meets Azure complexity
+# Enable multiple simultaneous RDP sessions
+Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' -Name 'fSingleSessionPerUser' -Value 0
 
-# ---------------------- CREATE RESOURCE GROUP ----------------------
-az group create \
-  --name $RESOURCE_GROUP \
-  --location $LOCATION
+# Optional: Increase max concurrent RDP connections (uncomment if needed)
+# Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'MaxInstanceCount' -Value 10
 
-# ---------------------- CREATE VNET AND SUBNETS ----------------------
-az network vnet create \
-  --resource-group $RESOURCE_GROUP \
-  --name $VNET_NAME \
-  --location $LOCATION \
-  --address-prefix 10.0.0.0/16 \
-  --subnet-name $VM_SUBNET_NAME \
-  --subnet-prefix 10.0.1.0/24
+# Create Users with Passwords
+net user user1 "UserP@ssw0rd1!" /add
+net user user2 "UserP@ssw0rd2!" /add
+net user user3 "UserP@ssw0rd3!" /add
 
-az network vnet subnet create \
-  --resource-group $RESOURCE_GROUP \
-  --vnet-name $VNET_NAME \
-  --name $BASTION_SUBNET_NAME \
-  --address-prefix 10.0.2.0/27
-
-# ---------------------- CREATE PUBLIC IP FOR BASTION ----------------------
-az network public-ip create \
-  --resource-group $RESOURCE_GROUP \
-  --name $PUBLIC_IP_NAME \
-  --sku Standard \
-  --location $LOCATION
-
-# ---------------------- CREATE BASTION HOST ----------------------
-az network bastion create \
-  --name $BASTION_NAME \
-  --resource-group $RESOURCE_GROUP \
-  --vnet-name $VNET_NAME \
-  --location $LOCATION \
-  --public-ip-address $PUBLIC_IP_NAME \
-  --sku Basic
-
-# ---------------------- CREATE WINDOWS VM (NO PUBLIC IP) ----------------------
-az vm create \
-  --resource-group $RESOURCE_GROUP \
-  --name $VM_NAME \
-  --image Win2022Datacenter \
-  --size Standard_D2s_v3 \
-  --admin-username $ADMIN_USERNAME \
-  --admin-password $ADMIN_PASSWORD \
-  --vnet-name $VNET_NAME \
-  --subnet $VM_SUBNET_NAME \
-  --nsg "" \
-  --public-ip-address "" \
-  --license-type Windows_Server \
-  --location $LOCATION
+# Add users to Remote Desktop Users group
+net localgroup "Remote Desktop Users" user1 /add
+net localgroup "Remote Desktop Users" user2 /add
+net localgroup "Remote Desktop Users" user3 /add
