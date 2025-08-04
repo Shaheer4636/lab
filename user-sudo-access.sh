@@ -2,8 +2,8 @@
 
 set -e
 
-USERNAME="gaurav"
-PASSWORD="gaurav@newlibertytee123!"
+USERNAME="jacob"
+PASSWORD="jacob@newlibertytee123!"
 
 # Create the user with home directory
 if ! id "$USERNAME" &>/dev/null; then
