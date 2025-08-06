@@ -1,38 +1,18 @@
-#!/bin/bash
-set -e
+# PowerShell script to install AWS SSM Agent on Windows Server (us-east-1)
 
-# Variables
-NEW_VERSION=17
-OLD_VERSION=16
+# Step 1: Download SSM Agent installer
+$ssmUrl = "https://s3.amazonaws.com/amazon-ssm-us-east-1/latest/windows_amd64/AmazonSSMAgentSetup.exe"
+$installerPath = "$env:USERPROFILE\Downloads\AmazonSSMAgentSetup.exe"
+Invoke-WebRequest -Uri $ssmUrl -OutFile $installerPath
 
-echo "=== Updating APT and installing PostgreSQL $NEW_VERSION.x ==="
+# Step 2: Install SSM Agent silently
+Start-Process -FilePath $installerPath -ArgumentList "/quiet" -Wait
 
-# Update system
-sudo apt update -y
-sudo apt install -y wget gnupg2 lsb-release
+# Step 3: Start the SSM Agent service
+Start-Service AmazonSSMAgent
 
-# Add PostgreSQL repo
-wget -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | \
-  sudo tee /etc/apt/sources.list.d/pgdg.list
+# Step 4: Set the service to start automatically
+Set-Service -Name AmazonSSMAgent -StartupType Automatic
 
-# Install new version
-sudo apt update -y
-sudo apt install -y postgresql-$NEW_VERSION
-
-echo "=== Stopping old PostgreSQL $OLD_VERSION cluster ==="
-sudo systemctl stop postgresql@$OLD_VERSION-main || true
-
-echo "=== Upgrading data from $OLD_VERSION to $NEW_VERSION ==="
-sudo pg_upgradecluster $OLD_VERSION main
-
-echo "=== Starting PostgreSQL $NEW_VERSION cluster ==="
-sudo systemctl start postgresql@$NEW_VERSION-main
-
-echo "=== Disabling old $OLD_VERSION cluster ==="
-sudo pg_dropcluster $OLD_VERSION main --stop
-
-echo "=== Checking installed version ==="
-psql --version
-
-echo "=== PostgreSQL upgrade to $NEW_VERSION.x complete! ==="
+# Step 5: Confirm service is running
+Get-Service AmazonSSMAgent
