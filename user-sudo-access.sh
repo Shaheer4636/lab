@@ -1,44 +1,38 @@
 #!/bin/bash
-
 set -e
 
-USERNAME="jacob"
-PASSWORD="jacob@newlibertytee123!"
+# Variables
+NEW_VERSION=17
+OLD_VERSION=16
 
-# Create the user with home directory
-if ! id "$USERNAME" &>/dev/null; then
-  useradd -m -s /bin/bash "$USERNAME"
-  echo "${USERNAME}:${PASSWORD}" | chpasswd
-  echo "User '$USERNAME' created."
-else
-  echo "User '$USERNAME' already exists."
-fi
+echo "=== Updating APT and installing PostgreSQL $NEW_VERSION.x ==="
 
-# Add to sudo group
-usermod -aG sudo "$USERNAME"
-echo "User '$USERNAME' added to sudo group."
+# Update system
+sudo apt update -y
+sudo apt install -y wget gnupg2 lsb-release
 
-# Prepare SSH directory
-SSH_DIR="/home/$USERNAME/.ssh"
-mkdir -p "$SSH_DIR"
-chmod 700 "$SSH_DIR"
-touch "$SSH_DIR/authorized_keys"
-chmod 600 "$SSH_DIR/authorized_keys"
-chown -R "$USERNAME:$USERNAME" "$SSH_DIR"
-echo "SSH directory prepared for user '$USERNAME'."
+# Add PostgreSQL repo
+wget -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | \
+  sudo tee /etc/apt/sources.list.d/pgdg.list
 
-# Modify /etc/ssh/sshd_config to allow password auth and user
-SSHD_CONFIG="/etc/ssh/sshd_config"
+# Install new version
+sudo apt update -y
+sudo apt install -y postgresql-$NEW_VERSION
 
-# Backup the file
-cp "$SSHD_CONFIG" "${SSHD_CONFIG}.bak"
+echo "=== Stopping old PostgreSQL $OLD_VERSION cluster ==="
+sudo systemctl stop postgresql@$OLD_VERSION-main || true
 
-# Enable password authentication
-sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' "$SSHD_CONFIG"
-sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' "$SSHD_CONFIG"
+echo "=== Upgrading data from $OLD_VERSION to $NEW_VERSION ==="
+sudo pg_upgradecluster $OLD_VERSION main
 
-# Restart SSH service
-echo "Restarting SSH service..."
-systemctl restart sshd
+echo "=== Starting PostgreSQL $NEW_VERSION cluster ==="
+sudo systemctl start postgresql@$NEW_VERSION-main
 
-echo "User '$USERNAME' is ready and can now access the server via SSH using password."
+echo "=== Disabling old $OLD_VERSION cluster ==="
+sudo pg_dropcluster $OLD_VERSION main --stop
+
+echo "=== Checking installed version ==="
+psql --version
+
+echo "=== PostgreSQL upgrade to $NEW_VERSION.x complete! ==="
