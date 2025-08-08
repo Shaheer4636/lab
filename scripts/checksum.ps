@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ---- Required AEM vars (set these in Release variables) ----
-: "${AEM_DEPLOY_URL:?AEM_DEPLOY_URL not set}"
-: "${AEM_DEPLOY_USERNAME:?AEM_DEPLOY_USERNAME not set}"
-: "${AEM_DEPLOY_PASSWORD:?AEM_DEPLOY_PASSWORD not set}"
+
+AEM_DEPLOY_URL="$(AEM_DEPLOY_URL)"
+AEM_DEPLOY_USERNAME="$(AEM_DEPLOY_USERNAME)"
+AEM_DEPLOY_PASSWORD="$(AEM_DEPLOY_PASSWORD)"
+
+# If creds/URL missing, don’t fail the job—just skip deploy.
+if [ -z "${AEM_DEPLOY_URL}" ] || [ -z "${AEM_DEPLOY_USERNAME}" ] || [ -z "${AEM_DEPLOY_PASSWORD}" ]; then
+  echo "AEM variables not set (AEM_DEPLOY_URL/USERNAME/PASSWORD). Skipping deploy check."
+  echo "##vso[task.setvariable variable=shouldDeploy;]False"
+  exit 0
+fi
 
 ROOT="$(System.DefaultWorkingDirectory)"
 
 resolve_artifact_dir() {
-  # Try common layouts first (handles nested alias folders)
+  # Try common layouts (handles nested alias folders)
   for d in \
     "$ROOT/_bsro-aem-shared/zip-artifacts" \
     "$ROOT/_bsro-aem-shared"/*/zip-artifacts \
@@ -55,20 +62,21 @@ echo "Group: $REGISTRY"
 # ----- Check if remote package exists (no jq; grep JSON) -----
 PREVIEW_URL="${AEM_DEPLOY_URL}/crx/packmgr/service/.json/etc/packages/${REGISTRY}/${FILENAME}?cmd=preview"
 PREVIEW_JSON="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X POST "$PREVIEW_URL" || true)"
+
 if echo "$PREVIEW_JSON" | grep -q '"success"[[:space:]]*:[[:space:]]*true'; then
   echo "Remote package exists. Comparing checksums…"
 
-  # Remote checksum (download stream and md5)
-  # Try GET first; some instances also accept POST. If both fail, skip compare.
-  if ! HASH_REMOTE="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
-        "${AEM_DEPLOY_URL}/etc/packages/${REGISTRY}/${FILENAME}" \
-        | md5sum | cut -d ' ' -f1)"; then
+  # Remote checksum (download stream -> md5). Try GET then POST.
+  HASH_REMOTE="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
+      "${AEM_DEPLOY_URL}/etc/packages/${REGISTRY}/${FILENAME}" \
+      | md5sum | cut -d ' ' -f1 || true)"
+  if [ -z "$HASH_REMOTE" ]; then
     HASH_REMOTE="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
-        -X POST "${AEM_DEPLOY_URL}/etc/packages/${REGISTRY}/${FILENAME}" \
-        | md5sum | cut -d ' ' -f1 || true)"
+      -X POST "${AEM_DEPLOY_URL}/etc/packages/${REGISTRY}/${FILENAME}" \
+      | md5sum | cut -d ' ' -f1 || true)"
   fi
 
-  if [ -z "${HASH_REMOTE:-}" ]; then
+  if [ -z "$HASH_REMOTE" ]; then
     echo "Could not compute remote md5; allowing deploy to be safe."
     echo "##vso[task.setvariable variable=shouldDeploy;]True"
     exit 0
