@@ -1,19 +1,18 @@
-echo "Starting: $T_NAME"
+#!/usr/bin/env bash
+set -euo pipefail
 
-
+# Hard-set the artifact path used in Release
 AEM_DEPLOY_ARTIFACT_FOLDER="$(System.DefaultWorkingDirectory)/_bsro-aem-shared/zip-artifacts"
 
 echo "Checking artifact folder: $AEM_DEPLOY_ARTIFACT_FOLDER"
+parent="$(dirname "$AEM_DEPLOY_ARTIFACT_FOLDER")"
+echo "Listing parent: $parent"
+ls -la "$parent" || true
 
-# List parent directory for debugging
-echo "Listing parent directory:"
-ls -la "$(dirname "$AEM_DEPLOY_ARTIFACT_FOLDER")" || true
-
-# Check if the folder exists
 if [ -d "$AEM_DEPLOY_ARTIFACT_FOLDER" ]; then
-    echo "##vso[task.setvariable variable=shouldDeploy;]True"
-    echo "Artifact folder exists. Proceeding with deployment."
+  echo "##vso[task.setvariable variable=shouldDeploy;]True"
+  echo "Artifact folder exists. Proceeding."
 else
-    echo "##vso[task.setvariable variable=shouldDeploy;]False"
-    echo "Artifact folder not found. Skipping deployment."
+  echo "##vso[task.setvariable variable=shouldDeploy;]False"
+  echo "Artifact folder NOT found. Skipping."
 fi
