@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "=== $T_NAME :: Deploy ==="
+
+# ----- CONFIG / INPUTS -----
+# If the task parameter is not passed, default to the correct Release path.
+AEM_DEPLOY_ARTIFACT_FOLDER="${AEM_DEPLOY_ARTIFACT_FOLDER:-$(System.DefaultWorkingDirectory)/_bsro-aem-shared/zip-artifacts}"
+AEM_DEPLOY_URL="${AEM_DEPLOY_URL:?missing AEM_DEPLOY_URL}"
+AEM_DEPLOY_USERNAME="${AEM_DEPLOY_USERNAME:?missing AEM_DEPLOY_USERNAME}"
+AEM_DEPLOY_PASSWORD="${AEM_DEPLOY_PASSWORD:?missing AEM_DEPLOY_PASSWORD}"
+
+# Max retries for upload/install
+RETRIES=3
+SLEEP_BASE=30
+
+# ----- PICK PACKAGE -----
+echo "Artifact folder: $AEM_DEPLOY_ARTIFACT_FOLDER"
+FILEPATH="$(ls "$AEM_DEPLOY_ARTIFACT_FOLDER"/*.zip -1 2>/dev/null | head -n1 || true)"
+if [[ -z "${FILEPATH}" ]]; then
+  echo "No .zip package found; nothing to deploy."
+  exit 0
+fi
+
+FILENAME="$(basename "$FILEPATH")"          # with .zip
+BASENAME="${FILENAME%.zip}"                 # without .zip
+PACKAGE_NAME="$BASENAME"
+
+# Default package group (registry) – switch for xtc
+REGISTRY="com.bridgestone.bsro.aem"
+if [[ "$BASENAME" == xtc* ]]; then
+  echo "Detected 'xtc' package => using bsro_hotfix registry"
+  REGISTRY="bsro_hotfix"
+fi
+
+echo "Package file: $FILENAME"
+echo "Package base: $BASENAME"
+echo "Registry    : $REGISTRY"
+
+# Helper to POST to CRX Package Manager and parse .success via jq
+pm_post_success () {
+  local url="$1"
+  curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X POST "$url" \
+    | jq -r '.success'
+}
+
+# ----- UPLOAD (with retries) -----
+echo "--- Upload step ---"
+for ((i=1; i<=RETRIES; i++)); do
+  echo "Upload attempt $i/$RETRIES"
+  # Note: upload (no install) to CRX Package Manager
+  curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
+       -F "file=@${FILEPATH}" -F "name=${FILENAME}" \
+       -F "force=true" -F "install=false" \
+       "${AEM_DEPLOY_URL}/crx/packmgr/service.jsp" > /dev/null
+
+  # Verify upload by previewing that exact package path
+  PREVIEW_URL="${AEM_DEPLOY_URL}/crx/packmgr/service/.json/etc/packages/${REGISTRY}/${FILENAME}?cmd=preview"
+  EXISTS_REMOTE="$(pm_post_success "$PREVIEW_URL")"
+  echo "Preview success: ${EXISTS_REMOTE}"
+
+  if [[ "$EXISTS_REMOTE" == "true" ]]; then
+    echo "Upload succeeded."
+    break
+  fi
+
+  if [[ $i -lt $RETRIES ]]; then
+    sleep $((SLEEP_BASE + 10*i))
+  else
+    echo "Failed to upload package after $RETRIES attempts."
+    exit 1
+  fi
+done
+
+# ----- (Optional) PAUSE INSTALLATION HANDLING -----
+echo "--- Check pauseInstallation nodes ---"
+PAUSE_JSON_URL="${AEM_DEPLOY_URL}/system/sling/installer/jcr/pauseInstallation.1.json"
+COUNT_NODES=$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" "$PAUSE_JSON_URL" \
+  | jq -r 'keys // [] | length' 2>/dev/null || echo 0)
+echo "pauseInstallation sub-node count: ${COUNT_NODES}"
+
+if [[ "${COUNT_NODES}" -gt 0 ]]; then
+  echo "Deleting pauseInstallation node to proceed with install..."
+  curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X DELETE \
+       "${AEM_DEPLOY_URL}/system/sling/installer/jcr/pauseInstallation" > /dev/null || true
+fi
+
+# Optional: log the count for your records (kept compatible with your paths)
+DATE="$(date +'%Y-%m-%d')"
+PROJECT_NAME="$(System.TeamProject)"
+PIPELINE_NAME="$(Release.DefinitionName)"
+RELEASE_NAME="$(Release.ReleaseName)"
+DATE_DIR="/mnt/pauseInstallation-count/${DATE}"
+mkdir -p "${DATE_DIR}/${PROJECT_NAME}" || true
+echo "${PIPELINE_NAME}_${RELEASE_NAME}: pauseInstallation_node_count=${COUNT_NODES}" \
+  | tee "${DATE_DIR}/${PROJECT_NAME}/pauseInstallation.log" >/dev/null
+
+# ----- INSTALL (with retries) -----
+echo "--- Install step ---"
+for ((i=1; i<=RETRIES; i++)); do
+  echo "Install attempt $i/$RETRIES"
+  INSTALL_URL="${AEM_DEPLOY_URL}/crx/packmgr/service/.json/etc/packages/${REGISTRY}/${PACKAGE_NAME}?cmd=install"
+  INSTALL_RESULT="$(pm_post_success "$INSTALL_URL")"
+  echo "Install result: ${INSTALL_RESULT}"
+
+  if [[ "$INSTALL_RESULT" == "true" ]]; then
+    echo "Package ${PACKAGE_NAME} installed successfully."
+    exit 0
+  fi
+
+  if [[ $i -lt $RETRIES ]]; then
+    sleep $((SLEEP_BASE + 10*i))
+  else
+    echo "Failed to install package after $RETRIES attempts."
+    exit 1
+  fi
+done
