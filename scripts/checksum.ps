@@ -1,56 +1,60 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ---------------- Azure DevOps variable substitution (safe) ----------------
+# Use single quotes so $(VAR) is replaced by ADO before bash runs, without
+# being treated as command-substitution.
+AEM_DEPLOY_URL='$(AEM_DEPLOY_URL)'
+AEM_DEPLOY_USERNAME='$(AEM_DEPLOY_USERNAME)'
+AEM_DEPLOY_PASSWORD='$(AEM_DEPLOY_PASSWORD)'
 
-AEM_DEPLOY_URL="$(AEM_DEPLOY_URL)"
-AEM_DEPLOY_USERNAME="$(AEM_DEPLOY_USERNAME)"
-AEM_DEPLOY_PASSWORD="$(AEM_DEPLOY_PASSWORD)"
+# Guard: if substitution didn't happen or value missing, skip deploy check
+for v in AEM_DEPLOY_URL AEM_DEPLOY_USERNAME AEM_DEPLOY_PASSWORD; do
+  val="${!v}"
+  if [[ -z "$val" || "$val" == *'$('* ]]; then
+    echo "$v is not set in Release variables. Skipping deploy check."
+    echo "##vso[task.setvariable variable=shouldDeploy;]False"
+    exit 0
+  fi
+done
 
-# If creds/URL missing, don’t fail the job—just skip deploy.
-if [ -z "${AEM_DEPLOY_URL}" ] || [ -z "${AEM_DEPLOY_USERNAME}" ] || [ -z "${AEM_DEPLOY_PASSWORD}" ]; then
-  echo "AEM variables not set (AEM_DEPLOY_URL/USERNAME/PASSWORD). Skipping deploy check."
-  echo "##vso[task.setvariable variable=shouldDeploy;]False"
-  exit 0
-fi
-
+# ---------------- Locate artifact zip ----------------
 ROOT="$(System.DefaultWorkingDirectory)"
 
 resolve_artifact_dir() {
-  # Try common layouts (handles nested alias folders)
   for d in \
     "$ROOT/_bsro-aem-shared/zip-artifacts" \
     "$ROOT/_bsro-aem-shared"/*/zip-artifacts \
     "$ROOT/bsro-aem-shared/zip-artifacts" \
     "$ROOT/bsro-aem-shared"/*/zip-artifacts
   do
-    [ -d "$d" ] && echo "$d" && return 0
+    [[ -d "$d" ]] && echo "$d" && return 0
   done
-  # Fallback: find first zip anywhere and use its directory
+  # Fallback: find any .zip under ROOT and use its directory
   local zip
-  zip="$(find "$ROOT" -maxdepth 5 -type f -name '*.zip' | head -n1 || true)"
-  [ -n "$zip" ] && dirname "$zip" && return 0
+  zip="$(find "$ROOT" -maxdepth 6 -type f -name '*.zip' | head -n1 || true)"
+  [[ -n "$zip" ]] && dirname "$zip" && return 0
   return 1
 }
 
 ART_DIR="$(resolve_artifact_dir || true)"
 echo "Resolved artifact dir: ${ART_DIR:-<none>}"
 
-if [ -z "${ART_DIR:-}" ] || [ ! -d "$ART_DIR" ]; then
-  echo "No artifact directory found under $ROOT"
+if [[ -z "${ART_DIR:-}" || ! -d "$ART_DIR" ]]; then
+  echo "No artifact directory found. Skipping."
   echo "##vso[task.setvariable variable=shouldDeploy;]False"
   exit 0
 fi
 
-# Pick first ZIP
 FILEPATH="$(ls "$ART_DIR"/*.zip -1 2>/dev/null | head -n1 || true)"
-if [ -z "$FILEPATH" ]; then
-  echo "No ZIP found in $ART_DIR"
+if [[ -z "$FILEPATH" ]]; then
+  echo "No ZIP found in $ART_DIR. Skipping."
   echo "##vso[task.setvariable variable=shouldDeploy;]False"
   exit 0
 fi
 
-FILENAME="$(basename "$FILEPATH")"      # e.g., foo-1.0.zip
-BASENAME="${FILENAME%.zip}"             # e.g., foo-1.0
+FILENAME="$(basename "$FILEPATH")"       # with .zip
+BASENAME="${FILENAME%.zip}"              # without .zip
 
 # Package group (registry)
 REGISTRY="com.bridgestone.bsro.aem"
@@ -59,25 +63,25 @@ REGISTRY="com.bridgestone.bsro.aem"
 echo "ZIP: $FILENAME"
 echo "Group: $REGISTRY"
 
-# ----- Check if remote package exists (no jq; grep JSON) -----
+# ---------------- Remote existence + checksum compare ----------------
 PREVIEW_URL="${AEM_DEPLOY_URL}/crx/packmgr/service/.json/etc/packages/${REGISTRY}/${FILENAME}?cmd=preview"
 PREVIEW_JSON="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X POST "$PREVIEW_URL" || true)"
 
 if echo "$PREVIEW_JSON" | grep -q '"success"[[:space:]]*:[[:space:]]*true'; then
-  echo "Remote package exists. Comparing checksums…"
+  echo "Remote package exists. Comparing checksums."
 
-  # Remote checksum (download stream -> md5). Try GET then POST.
+  # Remote checksum: try GET stream, then POST stream
   HASH_REMOTE="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
       "${AEM_DEPLOY_URL}/etc/packages/${REGISTRY}/${FILENAME}" \
       | md5sum | cut -d ' ' -f1 || true)"
-  if [ -z "$HASH_REMOTE" ]; then
+  if [[ -z "$HASH_REMOTE" ]]; then
     HASH_REMOTE="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
       -X POST "${AEM_DEPLOY_URL}/etc/packages/${REGISTRY}/${FILENAME}" \
       | md5sum | cut -d ' ' -f1 || true)"
   fi
 
-  if [ -z "$HASH_REMOTE" ]; then
-    echo "Could not compute remote md5; allowing deploy to be safe."
+  if [[ -z "$HASH_REMOTE" ]]; then
+    echo "Could not compute remote md5. Allowing deploy to be safe."
     echo "##vso[task.setvariable variable=shouldDeploy;]True"
     exit 0
   fi
@@ -86,14 +90,14 @@ if echo "$PREVIEW_JSON" | grep -q '"success"[[:space:]]*:[[:space:]]*true'; then
   echo "Remote md5: $HASH_REMOTE"
   echo "Local  md5: $HASH_LOCAL"
 
-  if [ "$HASH_REMOTE" = "$HASH_LOCAL" ]; then
-    echo "Checksums match — allow deploy."
+  if [[ "$HASH_REMOTE" == "$HASH_LOCAL" ]]; then
+    echo "Checksums match. Allow deploy."
     echo "##vso[task.setvariable variable=shouldDeploy;]True"
   else
-    echo "Checksums differ — skip deploy (manual review)."
+    echo "Checksums differ. Skip deploy (manual review)."
     echo "##vso[task.setvariable variable=shouldDeploy;]False"
   fi
 else
-  echo "Remote package not found — allow deploy."
+  echo "Remote package not found. Allow deploy."
   echo "##vso[task.setvariable variable=shouldDeploy;]True"
 fi
