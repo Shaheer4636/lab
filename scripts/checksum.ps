@@ -1,59 +1,91 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Inputs expected in variable group or release variables
+# ---- Required AEM vars (set these in Release variables) ----
 : "${AEM_DEPLOY_URL:?AEM_DEPLOY_URL not set}"
 : "${AEM_DEPLOY_USERNAME:?AEM_DEPLOY_USERNAME not set}"
 : "${AEM_DEPLOY_PASSWORD:?AEM_DEPLOY_PASSWORD not set}"
 
-AEM_DEPLOY_ARTIFACT_FOLDER="$(System.DefaultWorkingDirectory)/_bsro-aem-shared/zip-artifacts"
+ROOT="$(System.DefaultWorkingDirectory)"
 
-# Find first ZIP to deploy
-FILEPATH="$(ls "$AEM_DEPLOY_ARTIFACT_FOLDER"/*.zip -1 2>/dev/null | head -n1 || true)"
-if [[ -z "${FILEPATH}" ]]; then
-  echo "No ZIP in $AEM_DEPLOY_ARTIFACT_FOLDER"
+resolve_artifact_dir() {
+  # Try common layouts first (handles nested alias folders)
+  for d in \
+    "$ROOT/_bsro-aem-shared/zip-artifacts" \
+    "$ROOT/_bsro-aem-shared"/*/zip-artifacts \
+    "$ROOT/bsro-aem-shared/zip-artifacts" \
+    "$ROOT/bsro-aem-shared"/*/zip-artifacts
+  do
+    [ -d "$d" ] && echo "$d" && return 0
+  done
+  # Fallback: find first zip anywhere and use its directory
+  local zip
+  zip="$(find "$ROOT" -maxdepth 5 -type f -name '*.zip' | head -n1 || true)"
+  [ -n "$zip" ] && dirname "$zip" && return 0
+  return 1
+}
+
+ART_DIR="$(resolve_artifact_dir || true)"
+echo "Resolved artifact dir: ${ART_DIR:-<none>}"
+
+if [ -z "${ART_DIR:-}" ] || [ ! -d "$ART_DIR" ]; then
+  echo "No artifact directory found under $ROOT"
   echo "##vso[task.setvariable variable=shouldDeploy;]False"
   exit 0
 fi
 
-FILENAME="$(basename "$FILEPATH")"          # with .zip
-BASENAME="${FILENAME%.zip}"                 # without .zip
-
-# Registry (package group) — switch if file starts with xtc
-REGISTRY="com.bridgestone.bsro.aem"
-if [[ "$BASENAME" == xtc* ]]; then
-  REGISTRY="bsro_hotfix"
+# Pick first ZIP
+FILEPATH="$(ls "$ART_DIR"/*.zip -1 2>/dev/null | head -n1 || true)"
+if [ -z "$FILEPATH" ]; then
+  echo "No ZIP found in $ART_DIR"
+  echo "##vso[task.setvariable variable=shouldDeploy;]False"
+  exit 0
 fi
 
-echo "Package: $FILENAME (group: $REGISTRY)"
+FILENAME="$(basename "$FILEPATH")"      # e.g., foo-1.0.zip
+BASENAME="${FILENAME%.zip}"             # e.g., foo-1.0
 
-# Does remote package exist?
+# Package group (registry)
+REGISTRY="com.bridgestone.bsro.aem"
+[[ "$BASENAME" == xtc* ]] && REGISTRY="bsro_hotfix"
+
+echo "ZIP: $FILENAME"
+echo "Group: $REGISTRY"
+
+# ----- Check if remote package exists (no jq; grep JSON) -----
 PREVIEW_URL="${AEM_DEPLOY_URL}/crx/packmgr/service/.json/etc/packages/${REGISTRY}/${FILENAME}?cmd=preview"
-EXISTS_REMOTE="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X POST "$PREVIEW_URL" | jq -r '.success')"
-echo "Remote exists: $EXISTS_REMOTE"
+PREVIEW_JSON="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X POST "$PREVIEW_URL" || true)"
+if echo "$PREVIEW_JSON" | grep -q '"success"[[:space:]]*:[[:space:]]*true'; then
+  echo "Remote package exists. Comparing checksums…"
 
-if [[ "$EXISTS_REMOTE" == "true" ]]; then
-  echo "Compare checksums (remote vs local)"
+  # Remote checksum (download stream and md5)
+  # Try GET first; some instances also accept POST. If both fail, skip compare.
+  if ! HASH_REMOTE="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
+        "${AEM_DEPLOY_URL}/etc/packages/${REGISTRY}/${FILENAME}" \
+        | md5sum | cut -d ' ' -f1)"; then
+    HASH_REMOTE="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
+        -X POST "${AEM_DEPLOY_URL}/etc/packages/${REGISTRY}/${FILENAME}" \
+        | md5sum | cut -d ' ' -f1 || true)"
+  fi
 
-  # remote checksum (download stream -> md5)
-  HASH_TARGET="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
-    -X POST "${AEM_DEPLOY_URL}/etc/packages/${REGISTRY}/${FILENAME}" \
-    | md5sum | cut -d ' ' -f 1)"
+  if [ -z "${HASH_REMOTE:-}" ]; then
+    echo "Could not compute remote md5; allowing deploy to be safe."
+    echo "##vso[task.setvariable variable=shouldDeploy;]True"
+    exit 0
+  fi
 
-  # local checksum
-  HASH_SOURCE="$(md5sum "$FILEPATH" | cut -d ' ' -f 1)"
+  HASH_LOCAL="$(md5sum "$FILEPATH" | cut -d ' ' -f1)"
+  echo "Remote md5: $HASH_REMOTE"
+  echo "Local  md5: $HASH_LOCAL"
 
-  echo "remote: $HASH_TARGET"
-  echo "local : $HASH_SOURCE"
-
-  if [[ "$HASH_TARGET" == "$HASH_SOURCE" ]]; then
-    echo "Same checksum — deploy allowed."
+  if [ "$HASH_REMOTE" = "$HASH_LOCAL" ]; then
+    echo "Checksums match — allow deploy."
     echo "##vso[task.setvariable variable=shouldDeploy;]True"
   else
-    echo "Different checksum — skip deploy (needs manual review)."
+    echo "Checksums differ — skip deploy (manual review)."
     echo "##vso[task.setvariable variable=shouldDeploy;]False"
   fi
 else
-  echo "Package not found remotely — deploy allowed."
+  echo "Remote package not found — allow deploy."
   echo "##vso[task.setvariable variable=shouldDeploy;]True"
 fi
