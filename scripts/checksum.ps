@@ -1,58 +1,59 @@
-# Find the first ZIP file in the artifact folder
-FILEPATH=$(ls "${AEM_DEPLOY_ARTIFACT_FOLDER}"/*.zip -1 2>/dev/null | head -n1)
-echo "Found file path: $FILEPATH"
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Exit early if no zip file exists
-if [ -z "$FILEPATH" ]; then
-    echo "No ZIP file found in $AEM_DEPLOY_ARTIFACT_FOLDER"
-    echo "##vso[task.setvariable variable=shouldDeploy;]False"
-    exit 0
+# Inputs expected in variable group or release variables
+: "${AEM_DEPLOY_URL:?AEM_DEPLOY_URL not set}"
+: "${AEM_DEPLOY_USERNAME:?AEM_DEPLOY_USERNAME not set}"
+: "${AEM_DEPLOY_PASSWORD:?AEM_DEPLOY_PASSWORD not set}"
+
+AEM_DEPLOY_ARTIFACT_FOLDER="$(System.DefaultWorkingDirectory)/_bsro-aem-shared/zip-artifacts"
+
+# Find first ZIP to deploy
+FILEPATH="$(ls "$AEM_DEPLOY_ARTIFACT_FOLDER"/*.zip -1 2>/dev/null | head -n1 || true)"
+if [[ -z "${FILEPATH}" ]]; then
+  echo "No ZIP in $AEM_DEPLOY_ARTIFACT_FOLDER"
+  echo "##vso[task.setvariable variable=shouldDeploy;]False"
+  exit 0
 fi
 
-# Extract filename without path
-filename=$(basename "$FILEPATH" .zip)
-echo "Package filename: $filename"
+FILENAME="$(basename "$FILEPATH")"          # with .zip
+BASENAME="${FILENAME%.zip}"                 # without .zip
 
-# Default registry value
-registry="com.bridgestone.bsro.aem"
-
-# If filename starts with 'xtc', use the bsro_hotfix registry
-if [[ "$filename" == xtc* ]]; then
-    echo "Detected 'xtc' package"
-    registry="bsro_hotfix"
+# Registry (package group) — switch if file starts with xtc
+REGISTRY="com.bridgestone.bsro.aem"
+if [[ "$BASENAME" == xtc* ]]; then
+  REGISTRY="bsro_hotfix"
 fi
 
-# Build preview URL
-url="${AEM_DEPLOY_URL}/cqx/package/service/.json/etc/packages/${registry}/${filename}.zip?cmd=preview"
-echo "Preview URL: $url"
+echo "Package: $FILENAME (group: $REGISTRY)"
 
-# Check if package exists remotely
-EXISTS_REMOTE=$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X POST "$url" | jq -r '.success')
-echo "Remote package exists: $EXISTS_REMOTE"
+# Does remote package exist?
+PREVIEW_URL="${AEM_DEPLOY_URL}/crx/packmgr/service/.json/etc/packages/${REGISTRY}/${FILENAME}?cmd=preview"
+EXISTS_REMOTE="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X POST "$PREVIEW_URL" | jq -r '.success')"
+echo "Remote exists: $EXISTS_REMOTE"
 
-if [ "$EXISTS_REMOTE" == "true" ]; then
-    echo "Package already exists — comparing checksum"
+if [[ "$EXISTS_REMOTE" == "true" ]]; then
+  echo "Compare checksums (remote vs local)"
 
-    # Get target package checksum
-    hash_target=$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
-        -X POST "${AEM_DEPLOY_URL}/etc/packages/${registry}/${filename}.zip" \
-        | md5sum | cut -d ' ' -f 1)
+  # remote checksum (download stream -> md5)
+  HASH_TARGET="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
+    -X POST "${AEM_DEPLOY_URL}/etc/packages/${REGISTRY}/${FILENAME}" \
+    | md5sum | cut -d ' ' -f 1)"
 
-    # Get source package checksum
-    hash_source=$(md5sum "$FILEPATH" | cut -d ' ' -f 1)
+  # local checksum
+  HASH_SOURCE="$(md5sum "$FILEPATH" | cut -d ' ' -f 1)"
 
-    echo "Target checksum: $hash_target"
-    echo "Source checksum: $hash_source"
+  echo "remote: $HASH_TARGET"
+  echo "local : $HASH_SOURCE"
 
-    if [ "$hash_target" == "$hash_source" ]; then
-        echo "Checksums match — deployment allowed"
-        echo "##vso[task.setvariable variable=shouldDeploy;]True"
-    else
-        echo "Checksums differ — skipping deployment"
-        echo "##vso[task.setvariable variable=shouldDeploy;]False"
-        exit 0
-    fi
-else
-    echo "Package does not exist remotely — deployment allowed"
+  if [[ "$HASH_TARGET" == "$HASH_SOURCE" ]]; then
+    echo "Same checksum — deploy allowed."
     echo "##vso[task.setvariable variable=shouldDeploy;]True"
+  else
+    echo "Different checksum — skip deploy (needs manual review)."
+    echo "##vso[task.setvariable variable=shouldDeploy;]False"
+  fi
+else
+  echo "Package not found remotely — deploy allowed."
+  echo "##vso[task.setvariable variable=shouldDeploy;]True"
 fi
