@@ -1,0 +1,19 @@
+echo "Starting: $T_NAME"
+
+
+AEM_DEPLOY_ARTIFACT_FOLDER="$(System.DefaultWorkingDirectory)/_bsro-aem-shared/zip-artifacts"
+
+echo "Checking artifact folder: $AEM_DEPLOY_ARTIFACT_FOLDER"
+
+# List parent directory for debugging
+echo "Listing parent directory:"
+ls -la "$(dirname "$AEM_DEPLOY_ARTIFACT_FOLDER")" || true
+
+# Check if the folder exists
+if [ -d "$AEM_DEPLOY_ARTIFACT_FOLDER" ]; then
+    echo "##vso[task.setvariable variable=shouldDeploy;]True"
+    echo "Artifact folder exists. Proceeding with deployment."
+else
+    echo "##vso[task.setvariable variable=shouldDeploy;]False"
+    echo "Artifact folder not found. Skipping deployment."
+fi
