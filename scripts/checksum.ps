@@ -1,0 +1,58 @@
+# Find the first ZIP file in the artifact folder
+FILEPATH=$(ls "${AEM_DEPLOY_ARTIFACT_FOLDER}"/*.zip -1 2>/dev/null | head -n1)
+echo "Found file path: $FILEPATH"
+
+# Exit early if no zip file exists
+if [ -z "$FILEPATH" ]; then
+    echo "No ZIP file found in $AEM_DEPLOY_ARTIFACT_FOLDER"
+    echo "##vso[task.setvariable variable=shouldDeploy;]False"
+    exit 0
+fi
+
+# Extract filename without path
+filename=$(basename "$FILEPATH" .zip)
+echo "Package filename: $filename"
+
+# Default registry value
+registry="com.bridgestone.bsro.aem"
+
+# If filename starts with 'xtc', use the bsro_hotfix registry
+if [[ "$filename" == xtc* ]]; then
+    echo "Detected 'xtc' package"
+    registry="bsro_hotfix"
+fi
+
+# Build preview URL
+url="${AEM_DEPLOY_URL}/cqx/package/service/.json/etc/packages/${registry}/${filename}.zip?cmd=preview"
+echo "Preview URL: $url"
+
+# Check if package exists remotely
+EXISTS_REMOTE=$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X POST "$url" | jq -r '.success')
+echo "Remote package exists: $EXISTS_REMOTE"
+
+if [ "$EXISTS_REMOTE" == "true" ]; then
+    echo "Package already exists — comparing checksum"
+
+    # Get target package checksum
+    hash_target=$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
+        -X POST "${AEM_DEPLOY_URL}/etc/packages/${registry}/${filename}.zip" \
+        | md5sum | cut -d ' ' -f 1)
+
+    # Get source package checksum
+    hash_source=$(md5sum "$FILEPATH" | cut -d ' ' -f 1)
+
+    echo "Target checksum: $hash_target"
+    echo "Source checksum: $hash_source"
+
+    if [ "$hash_target" == "$hash_source" ]; then
+        echo "Checksums match — deployment allowed"
+        echo "##vso[task.setvariable variable=shouldDeploy;]True"
+    else
+        echo "Checksums differ — skipping deployment"
+        echo "##vso[task.setvariable variable=shouldDeploy;]False"
+        exit 0
+    fi
+else
+    echo "Package does not exist remotely — deployment allowed"
+    echo "##vso[task.setvariable variable=shouldDeploy;]True"
+fi
