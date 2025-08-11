@@ -1,84 +1,70 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ADO variables
+# ---- ADO vars (must be mapped or defined as Release variables) ----
 AEM_DEPLOY_URL='$(AEM_DEPLOY_URL)'
 AEM_DEPLOY_USERNAME='$(AEM_DEPLOY_USERNAME)'
 AEM_DEPLOY_PASSWORD='$(AEM_DEPLOY_PASSWORD)'
 AEM_DEPLOY_ARTIFACT_FOLDER='$(AEM_DEPLOY_ARTIFACT_FOLDER)'
 
-# Guard
 for v in AEM_DEPLOY_URL AEM_DEPLOY_USERNAME AEM_DEPLOY_PASSWORD AEM_DEPLOY_ARTIFACT_FOLDER; do
-  val="${!v}"; if [[ -z "$val" || "$val" == *'$('* ]]; then
-    echo "ERROR: $v is not set"; exit 1; fi
+  val="${!v}"; [[ -z "$val" || "$val" == *'$('* ]] && { echo "ERROR: $v not set"; exit 1; }
 done
 
 RETRIES=3
-BACKOFF=20
+BACKOFF=15
 
-# Pick ZIP
+# ---- pick the ZIP ----
 FILEPATH="$(ls "$AEM_DEPLOY_ARTIFACT_FOLDER"/*.zip -1 2>/dev/null | head -n1 || true)"
-if [[ -z "$FILEPATH" ]]; then
-  echo "No ZIP found in $AEM_DEPLOY_ARTIFACT_FOLDER"; exit 0
-fi
+[[ -z "${FILEPATH}" ]] && { echo "No ZIP in $AEM_DEPLOY_ARTIFACT_FOLDER"; exit 0; }
 FILENAME="$(basename "$FILEPATH")"
 BASENAME="${FILENAME%.zip}"
+
 REGISTRY="com.bridgestone.bsro.aem"
 [[ "$BASENAME" == xtc* ]] && REGISTRY="bsro_hotfix"
 
-echo "Deploying package: $FILENAME"
-echo "Package group:     $REGISTRY"
-echo "From folder:       $AEM_DEPLOY_ARTIFACT_FOLDER"
+PKG_PATH="/etc/packages/${REGISTRY}/${FILENAME}"
+PKG_URL="${AEM_DEPLOY_URL}${PKG_PATH}"
+
+echo "Package: $PKG_PATH"
+echo "From:    $FILEPATH"
 
 has_cmd(){ command -v "$1" >/dev/null 2>&1; }
 
-# Return "true"/"false" by parsing JSON; follow redirects; show response if asked
-pm_post_success () {
-  local url="$1" show="$2"
-  # follow redirects (-L) and fail on HTTP errors (-f); do not exit script on curl failure
-  local resp; resp="$(curl -s -L -f -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X POST "$url" || true)"
-  [[ "$show" == "1" ]] && echo "DEBUG preview resp: ${resp:0:300}"
+json_success () {
+  # echo "true" if {"success":true}, otherwise "false"
   if has_cmd jq; then
-    local v; v="$(echo "$resp" | jq -r '.success // empty' 2>/dev/null || true)"
-    [[ "$v" == "true" ]] && echo "true" || echo "false"
+    echo "$1" | jq -r '.success // empty' 2>/dev/null | grep -qi '^true$' && echo true || echo false
   else
-    [[ "$resp" =~ \"success\"[[:space:]]*:[[:space:]]*true ]] && echo "true" || echo "false"
+    [[ "$1" =~ \"success\"[[:space:]]*:[[:space:]]*true ]] && echo true || echo false
   fi
 }
 
-# HEAD/GET existence check for the package URL (fallback if preview is flaky)
-pkg_exists_http () {
-  local url="$1"
-  local code
-  code="$(curl -s -L -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -o /dev/null -w '%{http_code}' "$url" || true)"
-  [[ "$code" == "200" ]] && echo "true" || echo "false"
+http_code () {
+  curl -sS -L -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -o /dev/null -w '%{http_code}' "$1" || echo 000
 }
 
-# --- Upload with retries ---
-for ((i=1; i<=RETRIES; i++)); do
+# ---- upload with JSON API (authoritative) ----
+for ((i=1;i<=RETRIES;i++)); do
   echo "Upload attempt $i/$RETRIES"
+  RESP="$(curl -sS -L \
+      -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
+      -H 'Accept: application/json' -H 'X-Requested-With: Curl' \
+      -F "file=@${FILEPATH}" \
+      -F "name=${FILENAME}" \
+      -F "force=true" \
+      -F "install=false" \
+      -F "package=${PKG_PATH}" \
+      "${AEM_DEPLOY_URL}/crx/packmgr/service/.json?cmd=upload" || true)"
 
-  curl -s -L -f -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
-       -F "file=@${FILEPATH}" \
-       -F "name=${FILENAME}" \
-       -F "force=true" \
-       -F "install=false" \
-       "${AEM_DEPLOY_URL}/crx/packmgr/service.jsp" >/dev/null || true
+  OK="$(json_success "$RESP")"
+  echo "Upload JSON success: $OK"
 
-  sleep 3  # give AEM a moment to write package
+  # fallback verification: direct HTTP code on the package URL
+  CODE="$(http_code "$PKG_URL")"
+  echo "Package URL HTTP code: $CODE"
 
-  PREVIEW_URL="${AEM_DEPLOY_URL}/crx/packmgr/service/.json/etc/packages/${REGISTRY}/${FILENAME}?cmd=preview"
-  EXISTS_REMOTE="$(pm_post_success "$PREVIEW_URL" "$([[ $i -eq 1 ]] && echo 1 || echo 0)")"
-  echo "Preview success: ${EXISTS_REMOTE:-<empty>}"
-
-  if [[ "$EXISTS_REMOTE" != "true" ]]; then
-    # fallback: direct HTTP existence check
-    PKG_URL="${AEM_DEPLOY_URL}/etc/packages/${REGISTRY}/${FILENAME}"
-    EXISTS_REMOTE="$(pkg_exists_http "$PKG_URL")"
-    echo "HTTP 200 existence: $EXISTS_REMOTE"
-  fi
-
-  if [[ "$EXISTS_REMOTE" == "true" ]]; then
+  if [[ "$OK" == "true" || "$CODE" == "200" ]]; then
     echo "Upload confirmed."
     break
   fi
@@ -86,33 +72,38 @@ for ((i=1; i<=RETRIES; i++)); do
   if [[ $i -lt $RETRIES ]]; then
     sleep $((BACKOFF + 5*i))
   else
-    echo "ERROR: Upload failed after $RETRIES attempts."
+    echo "ERROR: Upload failed. Last response:"
+    echo "$RESP" | head -c 800
     exit 1
   fi
 done
 
-# --- Optional: clear pauseInstallation ---
+# ---- optional: clear pauseInstallation ----
 PAUSE_JSON_URL="${AEM_DEPLOY_URL}/system/sling/installer/jcr/pauseInstallation.1.json"
+PAUSE_RESP="$(curl -sS -L -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" "$PAUSE_JSON_URL" || true)"
 if has_cmd jq; then
-  COUNT_NODES="$(curl -s -L -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" "$PAUSE_JSON_URL" | jq -r 'keys // [] | length' 2>/dev/null || echo 0)"
+  COUNT="$(echo "$PAUSE_RESP" | jq -r 'keys // [] | length' 2>/dev/null || echo 0)"
 else
-  COUNT_NODES="$(curl -s -L -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" "$PAUSE_JSON_URL" | grep -oE '"[^"]*"\s*:' | wc -l | awk '{print $1}')"
+  COUNT="$(echo "$PAUSE_RESP" | grep -oE '"[^"]*"\s*:' | wc -l | awk '{print $1}')"
 fi
-echo "pauseInstallation nodes: $COUNT_NODES"
-if [[ "${COUNT_NODES:-0}" -gt 0 ]]; then
+echo "pauseInstallation nodes: ${COUNT:-0}"
+if [[ "${COUNT:-0}" -gt 0 ]]; then
   echo "Deleting pauseInstallation node…"
-  curl -s -L -f -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X DELETE \
+  curl -sS -L -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X DELETE \
        "${AEM_DEPLOY_URL}/system/sling/installer/jcr/pauseInstallation" >/dev/null || true
 fi
 
-# --- Install with retries ---
-for ((i=1; i<=RETRIES; i++)); do
+# ---- install with JSON API ----
+for ((i=1;i<=RETRIES;i++)); do
   echo "Install attempt $i/$RETRIES"
-  INSTALL_URL="${AEM_DEPLOY_URL}/crx/packmgr/service/.json/etc/packages/${REGISTRY}/${BASENAME}?cmd=install"
-  RESULT="$(pm_post_success "$INSTALL_URL" 0)"
-  echo "Install result: ${RESULT:-<empty>}"
+  INSTALL_URL="${AEM_DEPLOY_URL}/crx/packmgr/service/.json${PKG_PATH}?cmd=install"
+  RESP="$(curl -sS -L -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
+          -H 'Accept: application/json' -H 'X-Requested-With: Curl' \
+          -X POST "$INSTALL_URL" || true)"
+  OK="$(json_success "$RESP")"
+  echo "Install JSON success: $OK"
 
-  if [[ "$RESULT" == "true" ]]; then
+  if [[ "$OK" == "true" ]]; then
     echo "Install succeeded."
     exit 0
   fi
@@ -120,7 +111,8 @@ for ((i=1; i<=RETRIES; i++)); do
   if [[ $i -lt $RETRIES ]]; then
     sleep $((BACKOFF + 5*i))
   else
-    echo "ERROR: Install failed after $RETRIES attempts."
+    echo "ERROR: Install failed. Last response:"
+    echo "$RESP" | head -c 800
     exit 1
   fi
 done
