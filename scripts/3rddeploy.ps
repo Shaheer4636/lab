@@ -1,72 +1,121 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${AEM_DEPLOY_URL:?AEM_DEPLOY_URL not set}"
-: "${AEM_DEPLOY_USERNAME:?AEM_DEPLOY_USERNAME not set}"
-: "${AEM_DEPLOY_PASSWORD:?AEM_DEPLOY_PASSWORD not set}"
+# -------- Azure DevOps vars (ADO will substitute these) --------
+AEM_DEPLOY_URL='$(AEM_DEPLOY_URL)'
+AEM_DEPLOY_USERNAME='$(AEM_DEPLOY_USERNAME)'
+AEM_DEPLOY_PASSWORD='$(AEM_DEPLOY_PASSWORD)'
+AEM_DEPLOY_ARTIFACT_FOLDER='$(AEM_DEPLOY_ARTIFACT_FOLDER)'
 
-AEM_DEPLOY_ARTIFACT_FOLDER="$(System.DefaultWorkingDirectory)/_bsro-aem-shared/zip-artifacts"
+# Guard: ensure ADO substitution happened
+for v in AEM_DEPLOY_URL AEM_DEPLOY_USERNAME AEM_DEPLOY_PASSWORD AEM_DEPLOY_ARTIFACT_FOLDER; do
+  val="${!v}"
+  if [[ -z "$val" || "$val" == *'$('* ]]; then
+    echo "ERROR: $v is not set. Map it in the task's Environment or define as a Release variable."
+    exit 1
+  fi
+done
+
 RETRIES=3
 BACKOFF=30
 
-# Pick ZIP
+# -------- Pick ZIP --------
 FILEPATH="$(ls "$AEM_DEPLOY_ARTIFACT_FOLDER"/*.zip -1 2>/dev/null | head -n1 || true)"
 if [[ -z "${FILEPATH}" ]]; then
-  echo "No ZIP in $AEM_DEPLOY_ARTIFACT_FOLDER"
+  echo "No ZIP found in $AEM_DEPLOY_ARTIFACT_FOLDER"
   exit 0
 fi
-
 FILENAME="$(basename "$FILEPATH")"
 BASENAME="${FILENAME%.zip}"
-REGISTRY="com.bridgestone.bsro.aem"
-if [[ "$BASENAME" == xtc* ]]; then
-  REGISTRY="bsro_hotfix"
-fi
 
-echo "Deploying: $FILENAME (group: $REGISTRY)"
+# Registry group (package path)
+REGISTRY="com.bridgestone.bsro.aem"
+[[ "$BASENAME" == xtc* ]] && REGISTRY="bsro_hotfix"
+
+echo "Deploying package: $FILENAME"
+echo "Package group:     $REGISTRY"
+echo "From folder:       $AEM_DEPLOY_ARTIFACT_FOLDER"
+
+# -------- Helpers --------
+has_cmd() { command -v "$1" >/dev/null 2>&1; }
 
 pm_post_success () {
+  # Return "true" or "false" by parsing JSON response
   local url="$1"
-  curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X POST "$url" | jq -r '.success'
+  local resp
+  resp="$(curl -s --fail -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X POST "$url" || true)"
+  if has_cmd jq; then
+    echo "$resp" | jq -r '.success // "false"' 2>/dev/null || echo "false"
+  else
+    [[ "$resp" =~ \"success\"[[:space:]]*:[[:space:]]*true ]] && echo "true" || echo "false"
+  fi
 }
 
-# --- Upload with retries ---
+pause_nodes_count () {
+  local url="$1"
+  local resp
+  resp="$(curl -s --fail -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" "$url" || true)"
+  if has_cmd jq; then
+    echo "$resp" | jq -r 'keys // [] | length' 2>/dev/null || echo 0
+  else
+    # crude fallback: count object keys in JSON
+    echo "$resp" | grep -oE '"[^"]*"\s*:' | wc -l | awk '{print $1}'
+  fi
+}
+
+# -------- Upload with retries --------
 for ((i=1; i<=RETRIES; i++)); do
   echo "Upload attempt $i/$RETRIES"
-  curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
-       -F "file=@${FILEPATH}" -F "name=${FILENAME}" \
-       -F "force=true" -F "install=false" \
-       "${AEM_DEPLOY_URL}/crx/packmgr/service.jsp" >/dev/null
+  curl -s --fail -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
+       -F "file=@${FILEPATH}" \
+       -F "name=${FILENAME}" \
+       -F "force=true" \
+       -F "install=false" \
+       "${AEM_DEPLOY_URL}/crx/packmgr/service.jsp" >/dev/null || true
 
   PREVIEW_URL="${AEM_DEPLOY_URL}/crx/packmgr/service/.json/etc/packages/${REGISTRY}/${FILENAME}?cmd=preview"
   EXISTS_REMOTE="$(pm_post_success "$PREVIEW_URL")"
   echo "Preview success: $EXISTS_REMOTE"
 
-  [[ "$EXISTS_REMOTE" == "true" ]] && { echo "Upload OK."; break; }
+  if [[ "$EXISTS_REMOTE" == "true" ]]; then
+    echo "Upload confirmed."
+    break
+  fi
 
-  if [[ $i -lt $RETRIES ]]; then sleep $((BACKOFF + 10*i)); else
-    echo "Upload failed after $RETRIES attempts"; exit 1; fi
+  if [[ $i -lt $RETRIES ]]; then
+    sleep $((BACKOFF + 10*i))
+  else
+    echo "ERROR: Upload failed after $RETRIES attempts."
+    exit 1
+  fi
 done
 
-# --- PauseInstallation cleanup (optional) ---
+# -------- PauseInstallation cleanup (optional but helpful) --------
 PAUSE_JSON_URL="${AEM_DEPLOY_URL}/system/sling/installer/jcr/pauseInstallation.1.json"
-COUNT_NODES="$(curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" "$PAUSE_JSON_URL" | jq -r 'keys // [] | length' 2>/dev/null || echo 0)"
+COUNT_NODES="$(pause_nodes_count "$PAUSE_JSON_URL")"
 echo "pauseInstallation nodes: $COUNT_NODES"
 if [[ "$COUNT_NODES" -gt 0 ]]; then
   echo "Deleting pauseInstallation node…"
-  curl -s -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X DELETE \
+  curl -s --fail -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -X DELETE \
        "${AEM_DEPLOY_URL}/system/sling/installer/jcr/pauseInstallation" >/dev/null || true
 fi
 
-# --- Install with retries ---
+# -------- Install with retries --------
 for ((i=1; i<=RETRIES; i++)); do
   echo "Install attempt $i/$RETRIES"
   INSTALL_URL="${AEM_DEPLOY_URL}/crx/packmgr/service/.json/etc/packages/${REGISTRY}/${BASENAME}?cmd=install"
   RESULT="$(pm_post_success "$INSTALL_URL")"
   echo "Install result: $RESULT"
 
-  [[ "$RESULT" == "true" ]] && { echo "Install succeeded."; exit 0; }
+  if [[ "$RESULT" == "true" ]]; then
+    echo "Install succeeded."
+    exit 0
+  fi
 
-  if [[ $i -lt $RETRIES ]]; then sleep $((BACKOFF + 10*i)); else
-    echo "Install failed after $RETRIES attempts"; exit 1; fi
+  if [[ $i -lt $RETRIES ]]; then
+    sleep $((BACKOFF + 10*i))
+  else
+    echo "ERROR: Install failed after $RETRIES attempts."
+    exit 1
+  fi
 done
