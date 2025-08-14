@@ -1,0 +1,56 @@
+# Fix IMDS reachability on Windows EC2 using route.exe, then start SSM Agent
+
+$ErrorActionPreference = "Stop"
+
+function Test-IMDS {
+  try {
+    $hdr = @{ 'X-aws-ec2-metadata-token-ttl-seconds' = '21600' }
+    $t = Invoke-RestMethod -Method Put -Uri 'http://169.254.169.254/latest/api/token' -Headers $hdr -TimeoutSec 3
+    if ($t) {
+      $doc = Invoke-RestMethod -Uri 'http://169.254.169.254/latest/dynamic/instance-identity/document' -Headers @{ 'X-aws-ec2-metadata-token' = $t } -TimeoutSec 3
+      Write-Host "IMDS OK: InstanceId=$($doc.instanceId) Region=$($doc.region)"
+      return $true
+    }
+  } catch { Write-Warning "IMDS test failed: $($_.Exception.Message)" }
+  return $false
+}
+
+# 1) Find the primary interface index (the one with an IPv4 default gateway)
+$ifIndex = (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -ne $null } | Select-Object -First 1).InterfaceIndex
+if (-not $ifIndex) { throw "No interface with IPv4 gateway found." }
+
+# 2) Add persistent on-link routes to IMDS (host + link-local network), tolerant to 'already exists'
+$cmds = @(
+  "route -p delete 169.254.169.254",
+  "route -p add 169.254.169.254 mask 255.255.255.255 0.0.0.0 if $ifIndex",
+  "route -p delete 169.254.0.0",
+  "route -p add 169.254.0.0 mask 255.255.0.0 0.0.0.0 if $ifIndex"
+)
+foreach ($c in $cmds) { Start-Process -FilePath cmd.exe -ArgumentList "/c $c" -WindowStyle Hidden -Wait }
+
+# Optional: allow outbound to IMDS if a strict firewall/GPO is in place
+if (-not (Get-NetFirewallRule -DisplayName "Allow-IMDS-169.254.169.254" -ErrorAction SilentlyContinue)) {
+  New-NetFirewallRule -DisplayName "Allow-IMDS-169.254.169.254" -Direction Outbound -Action Allow `
+                      -RemoteAddress 169.254.169.254 -Protocol TCP -RemotePort 80 | Out-Null
+}
+
+Start-Sleep -Seconds 2
+
+# 3) Re-test IMDS
+if (-not (Test-IMDS)) {
+  Write-Warning "IMDS still unreachable. Current routes:"
+  Get-NetRoute -AddressFamily IPv4 | Where-Object {
+    $_.DestinationPrefix -in @("0.0.0.0/0","169.254.0.0/16","169.254.169.254/32")
+  } | Sort-Object DestinationPrefix,RouteMetric,InterfaceMetric | Format-Table -AutoSize
+  Write-Host "`nCheck EC2 → Instance → Details → Metadata options (enable IMDS, hop limit 1)."
+  return
+}
+
+# 4) Start SSM Agent
+Set-Service -Name AmazonSSMAgent -StartupType Automatic
+try { Start-Service -Name AmazonSSMAgent } catch { Start-Sleep 2; Start-Service -Name AmazonSSMAgent }
+
+# 5) Show status & quick diagnostics
+Get-Service -Name AmazonSSMAgent | Format-Table Name,Status,StartType -AutoSize
+$cli = "C:\Program Files\Amazon\SSM\ssm-cli.exe"
+if (Test-Path $cli) { & $cli get-diagnostics --output table }
