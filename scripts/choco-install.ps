@@ -1,52 +1,49 @@
 # =========================
-# Setup Git + Git-TFS without Chocolatey
+# TFVC to Azure DevOps Git Migration Script
 # =========================
 
 $ErrorActionPreference = "Stop"
 
-# 1. Create tools folder
-$toolsPath = "C:\Tools"
-$gitTfsPath = Join-Path $toolsPath "git-tfs"
-if (!(Test-Path $toolsPath)) {
-    New-Item -Path $toolsPath -ItemType Directory | Out-Null
-}
-if (!(Test-Path $gitTfsPath)) {
-    New-Item -Path $gitTfsPath -ItemType Directory | Out-Null
-}
+# ---- CONFIG ----
+$tfvcCollectionUrl = "http://tfs:8080/tfs/<CollectionName>"  # TFVC collection
+$tfvcPath          = "$/Driver Centric/Apps/Main/BatchApps/SafetyWorkDayBatchApp"
+$adoGitUrl         = "https://dev.azure.com/<org>/<project>/_git/SafetyWorkDayBatchApp"
 
-# 2. Download Git for Windows installer
-$gitInstaller = "$toolsPath\Git-Installer.exe"
-$gitUrl = "https://github.com/git-for-windows/git/releases/latest/download/Git-2.45.1-64-bit.exe"
-Invoke-WebRequest -Uri $gitUrl -OutFile $gitInstaller
+$migRoot = "C:\MigRepo"
+$repoName = "SafetyWorkDayBatchApp"
+$repoPath = Join-Path $migRoot $repoName
 
-Write-Host "Installing Git for Windows..."
-Start-Process -FilePath $gitInstaller -ArgumentList "/VERYSILENT","/NORESTART" -Wait
+# ---- PREP ----
+if (!(Test-Path $migRoot)) { New-Item -Path $migRoot -ItemType Directory | Out-Null }
 
-# 3. Download git-tfs latest release zip
-$gitTfsZip = "$toolsPath\git-tfs.zip"
-$gitTfsUrl = "https://github.com/git-tfs/git-tfs/releases/latest/download/git-tfs-0.32.2.zip"
-Invoke-WebRequest -Uri $gitTfsUrl -OutFile $gitTfsZip
+Write-Host "Starting TFVC clone with full history + all branches..."
+cd $migRoot
 
-# 4. Extract git-tfs
-Expand-Archive -Path $gitTfsZip -DestinationPath $gitTfsPath -Force
+# ---- CLONE TFVC ----
+# This may take hours for large repos
+git tfs clone `
+    $tfvcCollectionUrl `
+    "$tfvcPath" `
+    --with-branches `
+    --branches=all `
+    --tags `
+    --recurse
 
-# 5. Add Git and git-tfs to PATH (system-wide)
-$gitInstallPath = "C:\Program Files\Git\cmd"
-$envPaths = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+# ---- CLEANUP ----
+cd $repoPath
+Write-Host "Cleaning up TFVC bindings..."
+git tfs cleanup
 
-if ($envPaths -notlike "*$gitInstallPath*") {
-    [System.Environment]::SetEnvironmentVariable("Path", $envPaths + ";" + $gitInstallPath, "Machine")
-}
-if ($envPaths -notlike "*$gitTfsPath*") {
-    [System.Environment]::SetEnvironmentVariable("Path", $envPaths + ";" + $gitTfsPath, "Machine")
-}
+# ---- VERIFY BRANCHES ----
+Write-Host "`nBranches detected from TFVC:"
+git branch -a
 
-Write-Host "PATH updated. You may need to restart PowerShell/Windows for permanent effect."
+# ---- PUSH TO ADO ----
+Write-Host "`nPushing to Azure DevOps Git..."
+git remote add origin $adoGitUrl
 
-# 6. Verification
-Write-Host "`nVerifying installations..."
-& "$gitInstallPath\git.exe" --version
-& "$gitTfsPath\git-tfs.exe" --version
+git push --all origin
+git push --tags origin
 
-Write-Host "`nSetup complete! Git + git-tfs installed."
-Write-Host "Reminder: You still need Visual Studio with Team Explorer for TFVC DLLs."
+Write-Host "`nMigration complete!"
+Write-Host "Repo pushed to: $adoGitUrl"
