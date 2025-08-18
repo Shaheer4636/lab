@@ -1,7 +1,52 @@
-Set-ExecutionPolicy Bypass -Scope Process -Force; `
-[System.Net.ServicePointManager]::SecurityProtocol = `
-[System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
-iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+# =========================
+# Setup Git + Git-TFS without Chocolatey
+# =========================
 
+$ErrorActionPreference = "Stop"
 
-https://github.com/git-tfs/git-tfs
+# 1. Create tools folder
+$toolsPath = "C:\Tools"
+$gitTfsPath = Join-Path $toolsPath "git-tfs"
+if (!(Test-Path $toolsPath)) {
+    New-Item -Path $toolsPath -ItemType Directory | Out-Null
+}
+if (!(Test-Path $gitTfsPath)) {
+    New-Item -Path $gitTfsPath -ItemType Directory | Out-Null
+}
+
+# 2. Download Git for Windows installer
+$gitInstaller = "$toolsPath\Git-Installer.exe"
+$gitUrl = "https://github.com/git-for-windows/git/releases/latest/download/Git-2.45.1-64-bit.exe"
+Invoke-WebRequest -Uri $gitUrl -OutFile $gitInstaller
+
+Write-Host "Installing Git for Windows..."
+Start-Process -FilePath $gitInstaller -ArgumentList "/VERYSILENT","/NORESTART" -Wait
+
+# 3. Download git-tfs latest release zip
+$gitTfsZip = "$toolsPath\git-tfs.zip"
+$gitTfsUrl = "https://github.com/git-tfs/git-tfs/releases/latest/download/git-tfs-0.32.2.zip"
+Invoke-WebRequest -Uri $gitTfsUrl -OutFile $gitTfsZip
+
+# 4. Extract git-tfs
+Expand-Archive -Path $gitTfsZip -DestinationPath $gitTfsPath -Force
+
+# 5. Add Git and git-tfs to PATH (system-wide)
+$gitInstallPath = "C:\Program Files\Git\cmd"
+$envPaths = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+
+if ($envPaths -notlike "*$gitInstallPath*") {
+    [System.Environment]::SetEnvironmentVariable("Path", $envPaths + ";" + $gitInstallPath, "Machine")
+}
+if ($envPaths -notlike "*$gitTfsPath*") {
+    [System.Environment]::SetEnvironmentVariable("Path", $envPaths + ";" + $gitTfsPath, "Machine")
+}
+
+Write-Host "PATH updated. You may need to restart PowerShell/Windows for permanent effect."
+
+# 6. Verification
+Write-Host "`nVerifying installations..."
+& "$gitInstallPath\git.exe" --version
+& "$gitTfsPath\git-tfs.exe" --version
+
+Write-Host "`nSetup complete! Git + git-tfs installed."
+Write-Host "Reminder: You still need Visual Studio with Team Explorer for TFVC DLLs."
