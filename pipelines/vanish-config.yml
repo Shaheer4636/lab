@@ -1,0 +1,124 @@
+trigger:
+  branches:
+    include:
+      - master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  ROOT_DIR: '$(Build.SourcesDirectory)'
+  VARNISH_DIR: '$(Build.SourcesDirectory)/mnt/apps/varnish'
+  QA_TESTS_DIR: '$(Build.SourcesDirectory)/qa-tests'
+  OUT_DIR: '$(Build.ArtifactStagingDirectory)'
+
+stages:
+- stage: Build
+  displayName: "Build & Package Varnish + QA tests"
+  jobs:
+  - job: Package
+    steps:
+    - checkout: self
+
+    - script: |
+        echo "Sources: $(Build.SourcesDirectory)"
+        echo "Varnish dir: $(VARNISH_DIR)"
+        echo "QA tests dir: $(QA_TESTS_DIR)"
+        find "$(Build.SourcesDirectory)" -maxdepth 3 -type d -print
+      displayName: "Debug: show repo structure"
+
+    # Validate Varnish *.vcl (only if directory exists)
+    - task: Bash@3
+      displayName: "Validate Varnish configs (*.vcl)"
+      inputs:
+        targetType: inline
+        script: |
+          set -euo pipefail
+          if [ -d "$(VARNISH_DIR)" ]; then
+            echo "Scanning $(VARNISH_DIR) for *.vcl ..."
+            found=0
+            while IFS= read -r -d '' f; do
+              echo "Checking $f"
+              # Replace with 'varnishd -C -f "$f"' if varnishd is available
+              grep -q '' "$f" >/dev/null
+              found=1
+            done < <(find "$(VARNISH_DIR)" -type f -name '*.vcl' -print0 2>/dev/null || true)
+            if [ "$found" -eq 0 ]; then
+              echo "No *.vcl files found."
+            fi
+          else
+            echo "Directory $(VARNISH_DIR) not found. Skipping."
+          fi
+
+    # Validate QA test lists (*.txt) (only if directory exists)
+    - task: Bash@3
+      displayName: "Validate QA test files (*.txt)"
+      inputs:
+        targetType: inline
+        script: |
+          set -euo pipefail
+          if [ -d "$(QA_TESTS_DIR)" ]; then
+            echo "Scanning $(QA_TESTS_DIR) for *.txt ..."
+            found=0
+            while IFS= read -r -d '' f; do
+              echo "Checking $f"
+              # Ensure file is readable and not empty
+              test -s "$f"
+              found=1
+            done < <(find "$(QA_TESTS_DIR)" -maxdepth 1 -type f -name '*.txt' -print0 2>/dev/null || true)
+            if [ "$found" -eq 0 ]; then
+              echo "No *.txt files found in qa-tests."
+            fi
+          else
+            echo "Directory $(QA_TESTS_DIR) not found. Skipping."
+          fi
+
+    # Stage files into artifact folders
+    - task: CopyFiles@2
+      displayName: "Stage Varnish configs"
+      inputs:
+        SourceFolder: '$(VARNISH_DIR)'
+        Contents: '**/*.vcl'
+        TargetFolder: '$(OUT_DIR)/varnish-configs'
+        OverWrite: true
+        flattenFolders: false
+      condition: exists('$(VARNISH_DIR)')
+
+    - task: CopyFiles@2
+      displayName: "Stage QA test files"
+      inputs:
+        SourceFolder: '$(QA_TESTS_DIR)'
+        Contents: '**/*.txt'
+        TargetFolder: '$(OUT_DIR)/qa-tests'
+        OverWrite: true
+        flattenFolders: false
+      condition: exists('$(QA_TESTS_DIR)')
+
+    # Zip each set separately
+    - task: ArchiveFiles@2
+      displayName: "Archive varnish-configs.zip"
+      inputs:
+        rootFolderOrFile: '$(OUT_DIR)/varnish-configs'
+        includeRootFolder: true
+        archiveType: zip
+        archiveFile: '$(OUT_DIR)/varnish-configs.zip'
+        replaceExistingArchive: true
+      condition: exists('$(OUT_DIR)/varnish-configs')
+
+    - task: ArchiveFiles@2
+      displayName: "Archive qa-tests.zip"
+      inputs:
+        rootFolderOrFile: '$(OUT_DIR)/qa-tests'
+        includeRootFolder: true
+        archiveType: zip
+        archiveFile: '$(OUT_DIR)/qa-tests.zip'
+        replaceExistingArchive: true
+      condition: exists('$(OUT_DIR)/qa-tests')
+
+    # Publish both zips as one artifact
+    - task: PublishBuildArtifacts@1
+      displayName: "Publish build artifacts"
+      inputs:
+        PathtoPublish: '$(OUT_DIR)'
+        ArtifactName: 'bsro-varnish-configs'
+        publishLocation: 'Container'
