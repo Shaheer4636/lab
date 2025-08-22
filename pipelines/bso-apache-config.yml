@@ -6,50 +6,93 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 
+variables:
+  CONFIG_ROOT: '$(Build.SourcesDirectory)/mnt/apps'
+  VARNISH_DIR: '$(Build.SourcesDirectory)/mnt/apps/varnish'
+
 stages:
-  - stage: Build
-    displayName: "Build & Validate Configs"
-    jobs:
-      - job: Validate
-        steps:
-          - checkout: self
+- stage: Build
+  displayName: "Build & Validate Configs"
+  jobs:
+  - job: Validate
+    steps:
+    - checkout: self
 
-          - task: Bash@3
-            displayName: "Validate Apache Configs"
-            inputs:
-              targetType: inline
-              script: |
-                echo "Validating Apache config files..."
-                for file in $(find apps/bsro -name "*.conf" -o -name "*.txt"); do
-                  echo "Checking $file"
-                  # Example apache config test (replace with real validator if available)
-                  cat $file > /dev/null
-                done
+    # Quick sanity check of the workspace so paths are obvious in logs
+    - script: |
+        echo "Sources: $(Build.SourcesDirectory)"
+        echo "Config root: $(CONFIG_ROOT)"
+        echo "Varnish dir: $(VARNISH_DIR)"
+        find "$(Build.SourcesDirectory)" -maxdepth 3 -type d -print
+      displayName: "Debug: show repo structure"
 
-          - task: Bash@3
-            displayName: "Validate Varnish Configs"
-            inputs:
-              targetType: inline
-              script: |
-                echo "Validating Varnish config files..."
-                for file in $(find apps/varnish -name "*.vcl" -o -name "*.txt"); do
-                  echo "Checking $file"
-                  # Example varnishd check if tool available
-                  cat $file > /dev/null
-                done
+    # Validate Apache-style *.conf files if any exist anywhere under mnt/apps (skips if none)
+    - task: Bash@3
+      displayName: "Validate Apache Configs (*.conf)"
+      inputs:
+        targetType: inline
+        script: |
+          set -euo pipefail
+          echo "Validating Apache-style config files under $(CONFIG_ROOT)..."
+          found=0
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            # Replace with 'apachectl -t -f "$file"' if you have real validator available
+            grep -q '' "$file" >/dev/null
+            found=1
+          done < <(find "$(CONFIG_ROOT)" -type f -name "*.conf" -print0 2>/dev/null || true)
+          if [ "$found" -eq 0 ]; then
+            echo "No *.conf files found under $(CONFIG_ROOT). Skipping."
+          fi
 
-          - task: ArchiveFiles@2
-            displayName: "Archive Configs"
-            inputs:
-              rootFolderOrFile: '$(Build.SourcesDirectory)/apps'
-              includeRootFolder: false
-              archiveType: zip
-              archiveFile: '$(Build.ArtifactStagingDirectory)/configs.zip'
-              replaceExistingArchive: true
+    # Validate Varnish *.vcl files under mnt/apps/varnish (skips if none)
+    - task: Bash@3
+      displayName: "Validate Varnish Configs (*.vcl)"
+      inputs:
+        targetType: inline
+        script: |
+          set -euo pipefail
+          echo "Validating Varnish config files under $(VARNISH_DIR)..."
+          if [ -d "$(VARNISH_DIR)" ]; then
+            found=0
+            while IFS= read -r -d '' file; do
+              echo "Checking $file"
+              # Replace with 'varnishd -C -f "$file"' if varnishd is available
+              grep -q '' "$file" >/dev/null
+              found=1
+            done < <(find "$(VARNISH_DIR)" -type f -name "*.vcl" -print0 2>/dev/null || true)
+            if [ "$found" -eq 0 ]; then
+              echo "No *.vcl files found in $(VARNISH_DIR)."
+            fi
+          else
+            echo "Directory $(VARNISH_DIR) not found. Skipping Varnish validation."
+          fi
 
-          - task: PublishBuildArtifacts@1
-            displayName: "Publish Config Artifacts"
-            inputs:
-              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-              ArtifactName: 'bsro-apache-configs'
-              publishLocation: 'Container'
+    # Stage only the files we care about into the artifact folder
+    - task: CopyFiles@2
+      displayName: "Stage config files for packaging"
+      inputs:
+        SourceFolder: '$(CONFIG_ROOT)'
+        Contents: |
+          **/*.conf
+          **/*.vcl
+          **/*.txt
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/configs'
+        OverWrite: true
+        flattenFolders: false
+
+    - task: ArchiveFiles@2
+      displayName: "Archive Configs"
+      inputs:
+        rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/configs'
+        includeRootFolder: true
+        archiveType: zip
+        archiveFile: '$(Build.ArtifactStagingDirectory)/configs.zip'
+        replaceExistingArchive: true
+
+    - task: PublishBuildArtifacts@1
+      displayName: "Publish Config Artifacts"
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'bsro-apache-configs'
+        publishLocation: 'Container'
