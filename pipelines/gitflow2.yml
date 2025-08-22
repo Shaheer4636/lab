@@ -1,0 +1,62 @@
+name: Check Commits in Develop Branch
+
+on:
+  pull_request:
+    branches:
+      - 'ix-release' # Run only on PRs targeting the 'ix-release' branch
+    types: [opened, synchronize, reopened] # Run on these PR events
+
+jobs:
+  check_commits:
+    name: Verify Commits Exist in Develop
+    # Explicitly ensure this job only runs on PRs to ix-release
+    if: github.base_ref == 'ix-release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history for all branches and tags
+
+      - name: Fetch latest develop branch
+        run: git fetch origin develop:develop
+
+      - name: Check if PR commits are in develop
+        id: check
+        run: |
+          echo "::group::Checking commits against develop branch"
+          echo "PR Branch: ${{ github.head_ref }}"
+          echo "Target Branch: ${{ github.base_ref }}"
+          echo "::endgroup::"
+          
+          # List commits in the PR head that are NOT reachable from develop
+          # If this list is non-empty, some PR commits are not in develop
+          missing_commits=$(git log --format=%H develop..${{ github.event.pull_request.head.sha }})
+
+          if [[ -n "$missing_commits" ]]; then
+            echo "::error::⛔ This PR contains commits that are not in the 'develop' branch!"
+            echo ""
+            echo "::group::⚠️ Missing Commits (not in develop branch)"
+            echo "The following commits need to be merged to 'develop' first:"
+            git log --pretty=format:"• %C(red)%h%Creset - %s %C(bold blue)<%an>%Creset %C(yellow)%ad%Creset" --date=short develop..${{ github.event.pull_request.head.sha }}
+            echo "::endgroup::"
+            
+            echo "::group::📋 How to Fix This Issue"
+            echo "1. Create a PR from '${{ github.head_ref }}' to 'develop'"
+            echo "2. Get that PR approved and merged"
+            echo "3. Then create this PR from '${{ github.head_ref }}' to 'ix-release'"
+            echo "::endgroup::"
+            
+            # Set an output variable for potential use in later steps if needed
+            echo "commits_missing=true" >> $GITHUB_OUTPUT
+            exit 1 # Fail the workflow
+          else
+            echo "::notice::✅ All commits in this PR are present in the 'develop' branch."
+            echo "commits_missing=false" >> $GITHUB_OUTPUT
+            exit 0 # Pass the workflow
+          fi
+
+      # Optional: Use the output in subsequent steps if necessary
+      # - name: Example step using output
+      #   if: steps.check.outputs.commits_missing == 'true'
+      #   run: echo "Further actions needed because commits are missing."
