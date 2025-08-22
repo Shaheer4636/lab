@@ -1,0 +1,114 @@
+# .github/workflows/mirror-to-ado.yml
+name: Mirror to ADO
+
+on:            # every push, all branches/tags
+  push:
+    branches: ['**']
+    tags:     ['**']
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # grabs all refs
+
+      - name: Ensure git is installed
+        run: |
+          if ! command -v git &> /dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y git
+          fi
+
+      - name: Fetch all branches and tags
+        run: |
+          echo "Fetching all branches and tags..."
+          /usr/bin/git fetch --all --tags --prune
+          
+          echo "Available branches:"
+          /usr/bin/git branch -a
+          
+          echo "Available tags:"
+          /usr/bin/git tag -l
+          
+          echo "Total branches: $(git branch -a | wc -l)"
+          echo "Total tags: $(git tag -l | wc -l)"
+
+      - name: Setup Git
+        run: |
+          which git || echo "Git not found in PATH"
+          ls -la /usr/bin/git || echo "Git not in /usr/bin"
+          ls -la /usr/local/bin/git || echo "Git not in /usr/local/bin"
+          echo "PATH: $PATH"
+          git --version || echo "Git command failed"
+
+      - name: Configure Git
+        run: |
+          /usr/bin/git config --global user.email "github-actions@github.com"
+          /usr/bin/git config --global user.name "GitHub Actions"
+
+      - name: Push to Azure DevOps
+        env:
+          AZURE_PAT: ${{ secrets.AZURE_PAT }}
+        run: |
+          echo "AZURE_PAT is set: $([ -n "$AZURE_PAT" ] && echo 'YES' || echo 'NO')"
+          
+          # Construct URL for Azure DevOps
+          REMOTE_URL="https://:${AZURE_PAT}@dev.azure.com/BridgestoneGlobal/BSRO%20Experiences/_git/bsro-varnish-configs"
+          
+          echo "URL length: ${#REMOTE_URL}"
+          echo "URL starts with https: $([[ "$REMOTE_URL" == https://* ]] && echo 'YES' || echo 'NO')"
+          
+          # Log the constructed URL with safe masking
+          echo "Constructed URL (masked): https://***:***@dev.azure.com/BridgestoneGlobal/BSRO%20Experiences/_git/bsro-varnish-configs"
+          
+          # Validate URL format
+          if [[ "$REMOTE_URL" != https://* ]]; then
+            echo "ERROR: URL does not start with https://"
+            echo "Actual URL start: ${REMOTE_URL:0:10}"
+            exit 1
+          fi
+          
+          echo "URL validation passed - proceeding with git operations"
+          
+          # Remove existing azure remote if it exists
+          /usr/bin/git remote remove azure 2>/dev/null || echo "No existing azure remote to remove"
+          
+          # Add the new remote
+          echo "Adding azure remote..."
+          /usr/bin/git remote add azure "$REMOTE_URL"
+          
+          # List remotes to verify
+          echo "Current remotes:"
+          /usr/bin/git remote -v
+          
+          # Push to Azure DevOps
+          echo "Pushing to Azure DevOps..."
+          
+          # Clean up any duplicate refs before pushing
+          echo "Cleaning up duplicate refs..."
+          /usr/bin/git remote prune azure 2>/dev/null || echo "No pruning needed"
+          
+          # Push all remote-tracking branches to Azure DevOps
+          echo "Pushing all branches..."
+          for branch in $(/usr/bin/git branch -r); do
+            # Skip HEAD and origin/HEAD
+            if [[ "$branch" == *"HEAD"* ]]; then
+              continue
+            fi
+            # Extract branch name (remove "origin/" prefix)
+            branch_name="${branch#origin/}"
+            echo "Pushing branch: $branch_name"
+            
+            # Try to push the branch, but continue on failure
+            if /usr/bin/git push azure "$branch:refs/heads/$branch_name" --force 2>/dev/null; then
+              echo "Successfully pushed: $branch_name"
+            else
+              echo "Failed to push: $branch_name (continuing with next branch)"
+            fi
+          done
+          
+          echo "Pushing tags..."
+          /usr/bin/git push azure --tags --force
