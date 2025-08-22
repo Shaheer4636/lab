@@ -1,0 +1,55 @@
+trigger:
+  branches:
+    include:
+      - master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+  - stage: Build
+    displayName: "Build & Validate Configs"
+    jobs:
+      - job: Validate
+        steps:
+          - checkout: self
+
+          - task: Bash@3
+            displayName: "Validate Apache Configs"
+            inputs:
+              targetType: inline
+              script: |
+                echo "Validating Apache config files..."
+                for file in $(find apps/bsro -name "*.conf" -o -name "*.txt"); do
+                  echo "Checking $file"
+                  # Example apache config test (replace with real validator if available)
+                  cat $file > /dev/null
+                done
+
+          - task: Bash@3
+            displayName: "Validate Varnish Configs"
+            inputs:
+              targetType: inline
+              script: |
+                echo "Validating Varnish config files..."
+                for file in $(find apps/varnish -name "*.vcl" -o -name "*.txt"); do
+                  echo "Checking $file"
+                  # Example varnishd check if tool available
+                  cat $file > /dev/null
+                done
+
+          - task: ArchiveFiles@2
+            displayName: "Archive Configs"
+            inputs:
+              rootFolderOrFile: '$(Build.SourcesDirectory)/apps'
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: '$(Build.ArtifactStagingDirectory)/configs.zip'
+              replaceExistingArchive: true
+
+          - task: PublishBuildArtifacts@1
+            displayName: "Publish Config Artifacts"
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'bsro-apache-configs'
+              publishLocation: 'Container'
