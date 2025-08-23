@@ -1,0 +1,63 @@
+# Inputs
+$Host    = "$(HOST1)"
+$User    = "$(SSH_USER)"
+$KeyFile = "$(Agent.TempDirectory)\id_rsa"
+$Apache  = "/etc/httpd/conf.d"      # Ubuntu: /etc/apache2/sites-available
+$Varnish = "/etc/varnish"
+$Src     = "/tmp/configs"
+
+$remoteScript = @"
+set -euo pipefail
+TS=\$(date +%Y%m%d%H%M%S)
+echo "Backup current configs..."
+sudo mkdir -p /var/backups/apache-\$TS /var/backups/varnish-\$TS
+[ -d "$Apache" ] && sudo cp -a "$Apache/." /var/backups/apache-\$TS/ || true
+[ -d "$Varnish" ] && sudo cp -a "$Varnish/." /var/backups/varnish-\$TS/ || true
+
+echo "Install Apache *.conf..."
+if compgen -G "$Src/**/*.conf" >/dev/null; then
+  sudo find "$Src" -type f -name '*.conf' -exec install -m 0644 -D "{}" "$Apache/\$(basename "{}")" \;
+fi
+
+echo "Install Varnish *.vcl..."
+if compgen -G "$Src/**/*.vcl" >/dev/null; then
+  sudo find "$Src" -type f -name '*.vcl' -exec install -m 0644 -D "{}" "$Varnish/\$(basename "{}")" \;
+fi
+
+echo "Validate Apache..."
+if command -v apachectl >/dev/null 2>&1; then
+  sudo apachectl configtest
+fi
+
+echo "Validate Varnish..."
+if command -v varnishd >/dev/null 2>&1; then
+  for f in "$Varnish"/*.vcl 2>/dev/null; do [ -e "\$f" ] || break; sudo varnishd -C -f "\$f" >/dev/null; done
+fi
+
+echo "Reload services..."
+sudo systemctl reload httpd 2>/dev/null || sudo systemctl reload apache2 2>/dev/null || true
+sudo systemctl reload varnish 2>/dev/null || true
+
+echo "Done on \$(hostname)"
+"@
+
+# Send and execute in one go
+$cmd = "ssh -i `"$KeyFile`" -o StrictHostKeyChecking=no $User@$Host 'bash -s'"
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName = "cmd.exe"
+$psi.Arguments = "/c $cmd"
+$psi.RedirectStandardInput = $true
+$psi.RedirectStandardOutput = $true
+$psi.RedirectStandardError  = $true
+$psi.UseShellExecute = $false
+
+$p = New-Object System.Diagnostics.Process
+$p.StartInfo = $psi
+$p.Start() | Out-Null
+$p.StandardInput.WriteLine($remoteScript)
+$p.StandardInput.Close()
+$p.WaitForExit()
+
+Write-Host $p.StandardOutput.ReadToEnd()
+$err = $p.StandardError.ReadToEnd()
+if ($p.ExitCode -ne 0) { throw "Remote deploy failed: $err" } else { Write-Host $err }
