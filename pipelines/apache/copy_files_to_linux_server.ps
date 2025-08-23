@@ -1,22 +1,30 @@
 # Inputs
-$Host     = "$(HOST1)"                  # e.g., web01.example.com
-$User     = "$(SSH_USER)"               # e.g., devops
-$KeyFile  = "$(Agent.TempDirectory)\id_rsa"  # path where you downloaded the secure key
-$Source   = "$(System.DefaultWorkingDirectory)\extracted\*"  # what we extracted in step 1
-$Target   = "/tmp/configs"              # remote folder
+$Host     = "$(HOST1)"
+$User     = "$(SSH_USER)"
+$KeyFile  = "$(Agent.TempDirectory)\id_rsa"
+$Source   = "$(System.DefaultWorkingDirectory)\extracted"
+$Target   = "/tmp/configs"
 
-# Hardening: permissions on key
-if (-not (Test-Path $KeyFile)) { throw "SSH key not found: $KeyFile" }
-icacls $KeyFile /inheritance:r /grant:r "$($env:USERNAME):(R)" | Out-Null
+# Load key and connect
+Import-Module Posh-SSH -ErrorAction Stop
+$Key = Get-Content -Raw -Path $KeyFile | ConvertTo-SecureString -AsPlainText -Force
+$KeyObj = New-Object Renci.SshNet.PrivateKeyFile($KeyFile)
+$SshParams = @{
+  ComputerName = $Host
+  Credential   = New-Object System.Management.Automation.PSCredential($User,(ConvertTo-SecureString 'x' -AsPlainText -Force))
+  KeyFile      = $KeyFile
+}
+$Sftp = New-SFTPSession -ComputerName $Host -KeyFile $KeyFile -Credential $SshParams.Credential -AcceptKey
 
-# Create the remote folder (ssh)
-$sshCreate = "ssh -i `"$KeyFile`" -o StrictHostKeyChecking=no $User@$Host 'mkdir -p $Target && rm -rf $Target/*'"
-Write-Host $sshCreate
-cmd /c $sshCreate
-
-# Copy (scp -r)
-$scpCmd = "scp -i `"$KeyFile`" -o StrictHostKeyChecking=no -r `"$Source`" $User@$Host:`"$Target/`""
-Write-Host $scpCmd
-cmd /c $scpCmd
-
-Write-Host "Copied to $Host:$Target"
+# Recreate remote target and upload
+Invoke-SSHCommand -Index $Sftp.SessionId -Command "rm -rf $Target && mkdir -p $Target" | Out-Null
+$items = Get-ChildItem -Path $Source -Recurse -File
+foreach ($i in $items) {
+  $rel = $i.FullName.Substring($Source.Length).TrimStart('\')
+  $remote = ($Target + "/" + ($rel -replace '\\','/'))
+  $remoteDir = Split-Path $remote -Parent
+  Invoke-SSHCommand -Index $Sftp.SessionId -Command "mkdir -p $remoteDir" | Out-Null
+  Set-SFTPFile -SessionId $Sftp.SessionId -LocalFile $i.FullName -RemotePath $remote
+  Write-Host "Uploaded: $remote"
+}
+Remove-SFTPSession -SessionId $Sftp.SessionId
