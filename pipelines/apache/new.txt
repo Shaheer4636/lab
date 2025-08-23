@@ -1,0 +1,165 @@
+Great—this helps. Your variable group is almost ready, but one key path must change so the Release can actually find the files that the **build** produced.
+
+# Fix the source path first
+
+After the “extract” step, your files live on the agent at:
+
+```
+$(System.DefaultWorkingDirectory)/extracted/configs/...
+```
+
+So in your variable group set:
+
+* For Apache:
+
+  ```
+  SOURCE_BSRO_DIR = $(System.DefaultWorkingDirectory)/extracted/configs/apache/bsro
+  ```
+* If you’re deploying Varnish too, add:
+
+  ```
+  SOURCE_VARNISH_DIR = $(System.DefaultWorkingDirectory)/extracted/configs/varnish/bsro
+  ```
+
+Your existing variables like `TARGET_BSRO_DIR=/mnt/software/apache/conf/bsro`, `BACKUP_BSRO_PATH=/mnt/rollback/bsro/bsro`, `PIPELINE_USER=ec2-user`, and `APP_USER=apache` are fine if those match your servers.
+
+---
+
+# Steps and scripts (drop-in)
+
+Below are the exact commands for each task you showed, reusing your variables.
+
+## 1) Backup of Directories (SSH → Commands)
+
+```bash
+echo "starting ${T_NAME}"
+sudo -i mkdir -p "${BACKUP_BSRO_PATH}-${Release.ReleaseName}/bsro"
+sudo -i cp -pr "${TARGET_BSRO_DIR}" "${BACKUP_BSRO_PATH}-${Release.ReleaseName}/" || true
+```
+
+## 2) Pre Task – Directory Ownership to ec2-user (SSH → Commands)
+
+```bash
+sudo -i mkdir -p "${TARGET_BSRO_DIR}"
+sudo -i chown -R ${PIPELINE_USER}:${APP_USER} "${TARGET_BSRO_DIR}" || true
+```
+
+## 3) Deploy to Apache (Shell on AGENT → Inline Script)
+
+This copies files from the agent to the target server. Set `SERVER_IP` per environment (use your INT\_/QA\_/UAT\_/PROD\_ vars).
+
+```bash
+set -euo pipefail
+rsync -rvc --info=progress2 \
+  "${SOURCE_BSRO_DIR}/" \
+  "${PIPELINE_USER}@${SERVER_IP}:${TARGET_BSRO_DIR}/"
+```
+
+If rsync is not available, use:
+
+```bash
+scp -r "${SOURCE_BSRO_DIR}/"* "${PIPELINE_USER}@${SERVER_IP}:${TARGET_BSRO_DIR}/"
+```
+
+## 4) Changing Ownership to Apache (SSH → Commands)
+
+```bash
+sudo -i chown -R ${APP_USER}:${APP_USER} "${TARGET_BSRO_DIR}"
+```
+
+## 5) Syntax Check (SSH → Commands)
+
+You showed a custom apachectl; keep that. If it isn’t present on some hosts, fall back to the default.
+
+```bash
+if [ -x /mnt/software/apache/bin/apachectl ]; then
+  sudo -i /mnt/software/apache/bin/apachectl -t
+else
+  sudo -i apachectl -t
+fi
+```
+
+## 6) Apache Restart (SSH → Commands)
+
+```bash
+# Your environment uses SysV-style service control for httpd:
+sudo -i service httpd graceful || sudo -i systemctl reload httpd
+```
+
+---
+
+# Optional: Varnish steps (only if you add a Varnish stage)
+
+Variables (add if needed):
+
+```
+TARGET_VARNISH_DIR = /etc/varnish/bsro
+BACKUP_VARNISH_PATH = /var/backups/varnish
+```
+
+Backup (SSH):
+
+```bash
+sudo -i mkdir -p "${BACKUP_VARNISH_PATH}-${Release.ReleaseName}"
+[ -d "${TARGET_VARNISH_DIR}" ] && sudo -i cp -pr "${TARGET_VARNISH_DIR}" "${BACKUP_VARNISH_PATH}-${Release.ReleaseName}/" || true
+```
+
+Copy from agent (Shell on AGENT):
+
+```bash
+rsync -rvc --info=progress2 \
+  "$(System.DefaultWorkingDirectory)/extracted/configs/varnish/bsro/" \
+  "${PIPELINE_USER}@${SERVER_IP}:${TARGET_VARNISH_DIR}/"
+```
+
+Own to varnish (SSH):
+
+```bash
+sudo -i chown -R varnish:varnish "${TARGET_VARNISH_DIR}"
+```
+
+Validate + switch (SSH):
+
+```bash
+if command -v varnishd >/dev/null 2>&1; then
+  for f in "${TARGET_VARNISH_DIR}"/*.vcl 2>/dev/null; do
+    [ -e "$f" ] || break
+    sudo -i varnishd -C -f "$f" >/dev/null
+  done
+fi
+if command -v varnishadm >/dev/null 2>&1; then
+  DEF=$(ls -1 "${TARGET_VARNISH_DIR}"/*.vcl 2>/dev/null | head -n1 || true)
+  if [ -n "$DEF" ]; then
+    NAME="cfg_$(date +%Y%m%d%H%M%S)"
+    sudo -i varnishadm vcl.load "$NAME" "$DEF"
+    sudo -i varnishadm vcl.use "$NAME"
+  else
+    sudo -i systemctl reload varnish || true
+  fi
+fi
+```
+
+---
+
+# Multi-host tip
+
+If you need to push to several IPs (e.g., `QA_APACHE_1`, `QA_APACHE_2`), either:
+
+* Duplicate the **Deploy** task and change `SERVER_IP`, or
+* Use a Shell task on the agent and loop:
+
+  ```bash
+  for H in "${QA_APACHE_1}" "${QA_APACHE_2}"; do
+    rsync -rvc --info=progress2 "${SOURCE_BSRO_DIR}/" "${PIPELINE_USER}@${H}:${TARGET_BSRO_DIR}/"
+  done
+  ```
+
+---
+
+# Quick checklist
+
+* Update `SOURCE_BSRO_DIR` to the **extracted** path as shown; the old value in your screenshot points at a non-existent location for Releases.
+* Keep your existing `TARGET_BSRO_DIR`, `BACKUP_BSRO_PATH`, `PIPELINE_USER`, `APP_USER`.
+* Run tasks in this order per server: **Backup → Pre-ownership → Deploy (rsync) → Own to apache → Syntax check → Restart**.
+
+If you share one environment’s exact host list, I can paste the deploy scripts pre-filled with those variables.
