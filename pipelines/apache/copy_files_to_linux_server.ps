@@ -1,0 +1,22 @@
+# Inputs
+$Host     = "$(HOST1)"                  # e.g., web01.example.com
+$User     = "$(SSH_USER)"               # e.g., devops
+$KeyFile  = "$(Agent.TempDirectory)\id_rsa"  # path where you downloaded the secure key
+$Source   = "$(System.DefaultWorkingDirectory)\extracted\*"  # what we extracted in step 1
+$Target   = "/tmp/configs"              # remote folder
+
+# Hardening: permissions on key
+if (-not (Test-Path $KeyFile)) { throw "SSH key not found: $KeyFile" }
+icacls $KeyFile /inheritance:r /grant:r "$($env:USERNAME):(R)" | Out-Null
+
+# Create the remote folder (ssh)
+$sshCreate = "ssh -i `"$KeyFile`" -o StrictHostKeyChecking=no $User@$Host 'mkdir -p $Target && rm -rf $Target/*'"
+Write-Host $sshCreate
+cmd /c $sshCreate
+
+# Copy (scp -r)
+$scpCmd = "scp -i `"$KeyFile`" -o StrictHostKeyChecking=no -r `"$Source`" $User@$Host:`"$Target/`""
+Write-Host $scpCmd
+cmd /c $scpCmd
+
+Write-Host "Copied to $Host:$Target"
