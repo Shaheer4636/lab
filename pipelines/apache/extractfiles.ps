@@ -1,0 +1,11 @@
+$ArtifactRoot = "$(System.DefaultWorkingDirectory)\bsro-apache-configs"
+$ZipPath      = Join-Path $ArtifactRoot 'configs.zip'
+$OutDir       = "$(System.DefaultWorkingDirectory)\extracted"
+
+# Extract
+if (-not (Test-Path $ZipPath)) { throw "Zip not found: $ZipPath" }
+if (Test-Path $OutDir) { Remove-Item -Recurse -Force $OutDir }
+New-Item -ItemType Directory -Path $OutDir | Out-Null
+
+Expand-Archive -Path $ZipPath -DestinationPath $OutDir -Force
+Write-Host "Extracted to: $OutDir"
