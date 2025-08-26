@@ -1,0 +1,4 @@
+$branch = "%teamcity.build.branch%"   
+$channel = if ($branch -eq "master") { "Production" } else { "Feature" }
+Write-Host "##teamcity[setParameter name='octo.channel' value='$channel']"
+Write-Host "Octopus channel set to: $channel"
