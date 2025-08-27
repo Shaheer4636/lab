@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 TARGET_DIR='$(TARGET_DIR)'
-APP_USER='$(APP_USER)'
-ME="$(id -un)"   # user of the SSH connection (e.g., ec2-user)
+ME="$(id -un)"   # e.g., ec2-user
 
-echo "TARGET_DIR=$TARGET_DIR"
-echo "APP_USER=$APP_USER"
 echo "ME=$ME"
+echo "TARGET_DIR=$TARGET_DIR"
 
 sudo mkdir -p "$TARGET_DIR"
-sudo chown -R "$ME":"$APP_USER" "$TARGET_DIR"
-sudo chmod -R g+rwX "$TARGET_DIR"
+sudo chown -R "$ME":"$ME" "$TARGET_DIR"
+sudo find "$TARGET_DIR" -type d -exec chmod 755 {} +
+sudo find "$TARGET_DIR" -type f -exec chmod 644 {} +
