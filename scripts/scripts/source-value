@@ -1,0 +1,1 @@
+$(System.DefaultWorkingDirectory)/_$(Release.PrimaryArtifactSourceAlias)/AuthorContent
