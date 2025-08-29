@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(System.DefaultWorkingDirectory)"
+ALIAS="$(Release.PrimaryArtifactSourceAlias)"
+
+echo "DefaultWorkingDirectory: $ROOT"
+echo "Top-level under ROOT:"
+ls -la "$ROOT" || true
+
+resolve_artifact_dir() {
+  local cand1="$ROOT/_$ALIAS/zip-artifacts"
+  local cand2="$ROOT/$ALIAS/zip-artifacts"
+
+  for d in "$cand1" "$cand2"; do
+    if [ -d "$d" ]; then
+      echo "$d"
+      return 0
+    fi
+  done
+
+  # Fallback: find a zip anywhere under ROOT and use its directory
+  local zip
+  zip="$(find "$ROOT" -maxdepth 5 -type f -name '*.zip' | head -n1 || true)"
+  if [ -n "$zip" ]; then
+    dirname "$zip"
+    return 0
+  fi
+
+  return 1
+}
+
+if ART_DIR="$(resolve_artifact_dir)"; then
+  echo "Resolved artifact dir: $ART_DIR"
+  echo "##vso[task.setvariable variable=AEM_DEPLOY_ARTIFACT_FOLDER;]$ART_DIR"
+  echo "##vso[task.setvariable variable=shouldDeploy;]True"
+  echo "Artifact folder exists. Proceeding."
+else
+  echo "Could not resolve artifact dir."
+  echo "##vso[task.setvariable variable=shouldDeploy;]False"
+  echo "Artifact folder NOT found. Skipping."
+fi
