@@ -1,0 +1,47 @@
+# ---- ADO vars (must be mapped or defined as Release variables) ----
+AEM_DEPLOY_URL='$(AEM_DEPLOY_URL)'
+AEM_DEPLOY_USERNAME='$(AEM_DEPLOY_USERNAME)'
+AEM_DEPLOY_PASSWORD='$(AEM_DEPLOY_PASSWORD)'
+AEM_DEPLOY_ARTIFACT_FOLDER='$(AEM_DEPLOY_ARTIFACT_FOLDER)'
+
+for v in AEM_DEPLOY_URL AEM_DEPLOY_USERNAME AEM_DEPLOY_PASSWORD AEM_DEPLOY_ARTIFACT_FOLDER; do
+  val="${!v}"; [[ -z "$val" || "$val" == *'$('* ]] && { echo "ERROR: $v not set"; exit 1; }
+done
+
+RETRIES=3
+BACKOFF=15
+
+# ---- pick the ZIP ----
+FILEPATH="$(ls "$AEM_DEPLOY_ARTIFACT_FOLDER"/*.zip -1 2>/dev/null | head -n1 || true)"
+[[ -z "${FILEPATH}" ]] && { echo "No ZIP in $AEM_DEPLOY_ARTIFACT_FOLDER"; exit 0; }
+FILENAME="$(basename "$FILEPATH")"
+BASENAME="${FILENAME%.zip}"
+
+REGISTRY="com.bridgestone.bsro.aem"
+[[ "$BASENAME" == xtc* ]] && REGISTRY="bsro_hotfix"
+
+PKG_PATH="/etc/packages/${REGISTRY}/${FILENAME}"
+PKG_URL="${AEM_DEPLOY_URL}${PKG_PATH}"
+
+echo "Package: $PKG_PATH"
+echo "From:    $FILEPATH"
+
+has_cmd(){ command -v "$1" >/dev/null 2>&1; }
+
+json_success () {
+  # echo "true" if {"success":true}, otherwise "false"
+  if has_cmd jq; then
+    echo "$1" | jq -r '.success // empty' 2>/dev/null | grep -qi '^true$' && echo true || echo false
+  else
+    [[ "$1" =~ \"success\"[[:space:]]*:[[:space:]]*true ]] && echo true || echo false
+  fi
+}
+
+http_code () {
+  curl -sS -L -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -o /dev/null -w '%{http_code}' "$1" || echo 000
+}
+
+curl -k -v -H "X-Forwarded-For: 35.173.116.135" --retry 6 --retry-max-time 180 -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
+         -F install=true -F strict=true -F file=@"$FILEPATH" https://dev-monks-author.cwhsandbox.com/crx/packmgr/service.jsp
+
+  
