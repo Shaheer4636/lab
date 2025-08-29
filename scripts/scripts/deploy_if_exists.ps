@@ -1,73 +1,67 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ---------------- Required ADO vars ----------------
+# Required release variables
 AEM_DEPLOY_URL='$(AEM_DEPLOY_URL)'
 AEM_DEPLOY_USERNAME='$(AEM_DEPLOY_USERNAME)'
 AEM_DEPLOY_PASSWORD='$(AEM_DEPLOY_PASSWORD)'
 AEM_DEPLOY_ARTIFACT_FOLDER='$(AEM_DEPLOY_ARTIFACT_FOLDER)'
-AEM_DEPLOY_ZIP='$(AEM_DEPLOY_ZIP)'         # optional, set by previous task
-SHOULD_DEPLOY='$(shouldDeploy)'            # optional safety gate from prior checks
 
-# Optional toggles (set as release variables if needed)
-AEM_INSECURE='$(AEM_INSECURE)'             # "true" to allow self-signed; default true
-AEM_X_FORWARDED_FOR='$(AEM_X_FORWARDED_FOR)'  # e.g., "35.173.116.135" or blank
+# Optional (from earlier steps)
+AEM_DEPLOY_ZIP='$(AEM_DEPLOY_ZIP)'
+SHOULD_DEPLOY='$(shouldDeploy)'
 
-# Validate required variables (also ensure macro substitution happened)
+# Optional toggles
+AEM_INSECURE='$(AEM_INSECURE)'                  # true/false (default true)
+AEM_X_FORWARDED_FOR='$(AEM_X_FORWARDED_FOR)'    # e.g. allow-listed IP like 35.173.116.135
+
+# Validate required vars & gate on shouldDeploy
 for v in AEM_DEPLOY_URL AEM_DEPLOY_USERNAME AEM_DEPLOY_PASSWORD AEM_DEPLOY_ARTIFACT_FOLDER; do
   val="${!v}"
-  if [[ -z "$val" || "$val" == *'$('* ]]; then
-    echo "ERROR: $v is not set."
-    exit 1
-  fi
+  [[ -z "$val" || "$val" == *'$('* ]] && { echo "ERROR: $v not set"; exit 1; }
 done
-
 if [[ "${SHOULD_DEPLOY,,}" != "true" ]]; then
   echo "shouldDeploy is not True. Skipping deploy."
   exit 0
 fi
 
-# ---------------- Pick the ZIP ----------------
+# Pick the ZIP (prefer explicit path from previous task)
 FILEPATH=""
 if [[ -n "${AEM_DEPLOY_ZIP:-}" && -f "$AEM_DEPLOY_ZIP" ]]; then
   FILEPATH="$AEM_DEPLOY_ZIP"
 else
   FILEPATH="$(ls -1 "${AEM_DEPLOY_ARTIFACT_FOLDER}"/*.zip 2>/dev/null | head -n1 || true)"
 fi
-
-if [[ -z "$FILEPATH" || ! -f "$FILEPATH" ]]; then
-  echo "No ZIP found to deploy in: ${AEM_DEPLOY_ARTIFACT_FOLDER}"
-  exit 0
-fi
-
-if [[ ! -s "$FILEPATH" ]]; then
-  echo "ZIP exists but is empty: $FILEPATH"
-  exit 1
-fi
+[[ -z "$FILEPATH" || ! -f "$FILEPATH" ]] && { echo "No ZIP found to deploy in: ${AEM_DEPLOY_ARTIFACT_FOLDER}"; exit 0; }
+[[ ! -s "$FILEPATH" ]] && { echo "ZIP exists but is empty: $FILEPATH"; exit 1; }
 
 FILENAME="$(basename "$FILEPATH")"
 BASENAME="${FILENAME%.zip}"
 
-# Registry/group from filename convention
+# Package group by name convention
 REGISTRY="com.bridgestone.bsro.aem"
 [[ "$BASENAME" == xtc* ]] && REGISTRY="bsro_hotfix"
 
 PKG_PATH="/etc/packages/${REGISTRY}/${FILENAME}"
-UPLOAD_URL="${AEM_DEPLOY_URL%/}/crx/packmgr/service/.json/?cmd=upload"
-INSTALL_URL="${AEM_DEPLOY_URL%/}/crx/packmgr/service/.json${PKG_PATH}?cmd=install&recursive=true"
+BASE="${AEM_DEPLOY_URL%/}"
+UPLOAD_JSON="${BASE}/crx/packmgr/service/.json/?cmd=upload"
+INSTALL_JSON="${BASE}/crx/packmgr/service/.json${PKG_PATH}?cmd=install&recursive=true"
+UPLOAD_JSP="${BASE}/crx/packmgr/service.jsp?cmd=upload&force=true&install=true"
 
 echo "Package path: ${PKG_PATH}"
 echo "Deploying from: ${FILEPATH}"
-echo "Upload URL:  ${UPLOAD_URL}"
-echo "Install URL: ${INSTALL_URL}"
+echo "Upload(JSON):  ${UPLOAD_JSON}"
+echo "Install(JSON): ${INSTALL_JSON}"
+echo "Upload(JSP):   ${UPLOAD_JSP}"
 
-# ---------------- Curl options ----------------
-CURL_OPTS=(-sS -L --retry 6 --retry-delay 5 --retry-connrefused -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}")
+# Curl options
+CURL_OPTS=(-sS -L --http1.1 --retry 6 --retry-delay 5 --retry-connrefused -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}")
 [[ "${AEM_INSECURE,,}" != "false" ]] && CURL_OPTS+=(-k)
+# Friendly headers (help with some CSRF/WAF setups)
+CURL_OPTS+=(-H "X-Requested-By: pipeline" -H "X-Requested-With: curl" -H "Cache-Control: no-cache")
 [[ -n "${AEM_X_FORWARDED_FOR:-}" ]] && CURL_OPTS+=(-H "X-Forwarded-For: ${AEM_X_FORWARDED_FOR}")
 
 json_success () {
-  # prints "true" if {"success":true} present, else "false"
   if command -v jq >/dev/null 2>&1; then
     echo "$1" | jq -r '.success // false' 2>/dev/null | grep -qi '^true$' && echo true || echo false
   else
@@ -75,28 +69,41 @@ json_success () {
   fi
 }
 
-# ---------------- Upload ----------------
-echo "Uploading package…"
-upload_resp="$(curl "${CURL_OPTS[@]}" -F force=true -F name="${FILENAME}" -F file=@"${FILEPATH}" "${UPLOAD_URL}" || true)"
-if [[ "$(json_success "$upload_resp")" != "true" ]]; then
-  echo "Upload failed or not acknowledged as success."
-  echo "Response:"
-  echo "$upload_resp"
-  exit 1
-fi
-echo "Upload acknowledged."
+http_code () {
+  curl "${CURL_OPTS[@]}" -o /dev/null -w '%{http_code}' "$1" || echo 000
+}
 
-# ---------------- Install ----------------
-echo "Installing package…"
-install_resp="$(curl "${CURL_OPTS[@]}" -X POST "${INSTALL_URL}" || true)"
-if [[ "$(json_success "$install_resp")" != "true" ]]; then
-  echo "Install failed or not acknowledged as success."
-  echo "Response:"
-  echo "$install_resp"
-  exit 1
-fi
-echo "Install acknowledged as success."
+# --- Attempt 1: JSON API (upload then install) ---
+echo "Uploading via JSON API…"
+upload_resp="$(curl "${CURL_OPTS[@]}" -F force=true -F name="${FILENAME}" -F file=@"${FILEPATH}" "${UPLOAD_JSON}" || true)"
+upload_ok="$(json_success "$upload_resp")"
+echo "Upload(JSON) success: $upload_ok"
 
-# Optional: expose status/paths for later steps
-echo "##vso[task.setvariable variable=DeployedPackagePath;]${PKG_PATH}"
-echo "Deployment complete."
+if [[ "$upload_ok" == "true" ]]; then
+  echo "Installing via JSON API…"
+  install_resp="$(curl "${CURL_OPTS[@]}" -X POST "${INSTALL_JSON}" || true)"
+  install_ok="$(json_success "$install_resp")"
+  echo "Install(JSON) success: $install_ok"
+  if [[ "$install_ok" == "true" ]]; then
+    echo "Install acknowledged as success."
+    echo "##vso[task.setvariable variable=DeployedPackagePath;]${PKG_PATH}"
+    exit 0
+  fi
+else
+  code="$(http_code "${UPLOAD_JSON}")"
+  echo "Upload(JSON) failed. HTTP: $code"
+fi
+
+# --- Attempt 2: JSP API (combined upload+install) ---
+echo "Falling back to JSP endpoint (upload+install)…"
+jsp_resp="$(curl "${CURL_OPTS[@]}" -F name="${FILENAME}" -F file=@"${FILEPATH}" "${UPLOAD_JSP}" || true)"
+# Heuristic: success words in HTML response
+if echo "$jsp_resp" | grep -qiE 'success|installed|Package.*(uploaded|installed)'; then
+  echo "JSP endpoint reports success."
+  echo "##vso[task.setvariable variable=DeployedPackagePath;]${PKG_PATH}"
+  exit 0
+fi
+
+echo "Deploy failed. Last response:"
+echo "$jsp_resp"
+exit 1
