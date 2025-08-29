@@ -1,90 +1,32 @@
-trigger: none
-
-pool:
-  name: "CWH Sandbox BSRO"
-
 variables:
-  sourceProject: 'BSRO'                 # Project NAME (not GUID)
-  sourceDefinitionId: '849'             # Pipeline definitionId
-  sourceBuildId: '328818'               # Build that produced the artifacts
-  authArtifact: 'dwdpkg-auth-artifacts' # Artifact names (must match source build)
-  pubArtifact:  'dwdpkg-pub-artifacts'
+  authorArtifactUrl: "https://dev.azure.com/BridgestoneGlobal/39785de8-4f00-4b0f-bb9c-d70ab9809232/_apis/build/builds/328818/artifacts?artifactName=dwdpkg-auth-artifacts&api-version=7.1&%24format=zip"
+  publishArtifactUrl: "https://dev.azure.com/BridgestoneGlobal/39785de8-4f00-4b0f-bb9c-d70ab9809232/_apis/build/builds/328818/artifacts?artifactName=dwdpkg-pub-artifacts&api-version=7.1&%24format=zip"
+  artifactFolder: "$(Pipeline.Workspace)/artifacts"
 
-stages:
-- stage: DownloadAndRepublish
-  displayName: Download & republish $(sourceBuildId)
-  jobs:
-  - job: Fetch
-    displayName: Fetch and publish
-    steps:
-    - checkout: none
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.x'
 
-    - task: DeleteFiles@1
-      displayName: Clean dwdpkg-artifacts
-      inputs:
-        SourceFolder: '$(Build.SourcesDirectory)'
-        Contents: 'dwdpkg-artifacts/**'
-        RemoveSourceFolder: false
+- script: |
+    echo "Creating artifacts folder..."
+    mkdir -p "$(artifactFolder)"
 
-    - bash: |
-        set -euxo pipefail
-        mkdir -p "$(Build.SourcesDirectory)/dwdpkg-artifacts"
-      displayName: Prep folders
+    echo "Downloading Author Content artifact..."
+    curl -L -o "$(artifactFolder)/dwdpkg-auth-artifacts.zip" "$(authorArtifactUrl)"
 
-    # Download "Author Content"
-    - task: DownloadBuildArtifacts@1
-      displayName: Download "$(authArtifact)"
-      inputs:
-        buildType: 'specific'
-        project: '$(sourceProject)'            # Use project NAME
-        definition: '$(sourceDefinitionId)'    # definitionId of the source pipeline
-        buildVersionToDownload: 'specific'
-        buildId: '$(sourceBuildId)'
-        downloadType: 'single'
-        artifactName: '$(authArtifact)'
-        downloadPath: '$(Build.SourcesDirectory)/dwdpkg-artifacts'
+    echo "Downloading Publish Content artifact..."
+    curl -L -o "$(artifactFolder)/dwdpkg-pub-artifacts.zip" "$(publishArtifactUrl)"
+  displayName: "Download Artifacts"
 
-    # Download "Publish Content"
-    - task: DownloadBuildArtifacts@1
-      displayName: Download "$(pubArtifact)"
-      inputs:
-        buildType: 'specific'
-        project: '$(sourceProject)'
-        definition: '$(sourceDefinitionId)'
-        buildVersionToDownload: 'specific'
-        buildId: '$(sourceBuildId)'
-        downloadType: 'single'
-        artifactName: '$(pubArtifact)'
-        downloadPath: '$(Build.SourcesDirectory)/dwdpkg-artifacts'
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(artifactFolder)/dwdpkg-auth-artifacts.zip'
+    artifact: 'AuthorContent'
+    publishLocation: 'pipeline'
 
-    # Normalize to the folder names your publish step expects
-    - bash: |
-        set -euxo pipefail
-        ROOT="$(Build.SourcesDirectory)/dwdpkg-artifacts"
-        if [ -d "$ROOT/$(authArtifact)" ]; then
-          rm -rf "$ROOT/auth"
-          mv "$ROOT/$(authArtifact)" "$ROOT/auth"
-        fi
-        if [ -d "$ROOT/$(pubArtifact)" ]; then
-          rm -rf "$ROOT/pub"
-          mv "$ROOT/$(pubArtifact)" "$ROOT/pub"
-        fi
-        mkdir -p "$ROOT/auth" "$ROOT/pub"
-        echo "Auth contents:" && ls -la "$ROOT/auth" || true
-        echo "Pub contents:"  && ls -la "$ROOT/pub"  || true
-      displayName: Normalize folders
-
-    # Re-publish as build artifacts (same names)
-    - task: PublishBuildArtifacts@1
-      displayName: Publish "Author Content"
-      inputs:
-        PathtoPublish: '$(Build.SourcesDirectory)/dwdpkg-artifacts/auth'
-        ArtifactName: 'dwdpkg-auth-artifacts'
-        publishLocation: 'Container'
-
-    - task: PublishBuildArtifacts@1
-      displayName: Publish "Publish Content"
-      inputs:
-        PathtoPublish: '$(Build.SourcesDirectory)/dwdpkg-artifacts/pub'
-        ArtifactName: 'dwdpkg-pub-artifacts'
-        publishLocation: 'Container'
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(artifactFolder)/dwdpkg-pub-artifacts.zip'
+    artifact: 'PublishContent'
+    publishLocation: 'pipeline'
