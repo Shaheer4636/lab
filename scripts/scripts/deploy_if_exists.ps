@@ -1,47 +1,102 @@
-# ---- ADO vars (must be mapped or defined as Release variables) ----
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ---------------- Required ADO vars ----------------
 AEM_DEPLOY_URL='$(AEM_DEPLOY_URL)'
 AEM_DEPLOY_USERNAME='$(AEM_DEPLOY_USERNAME)'
 AEM_DEPLOY_PASSWORD='$(AEM_DEPLOY_PASSWORD)'
 AEM_DEPLOY_ARTIFACT_FOLDER='$(AEM_DEPLOY_ARTIFACT_FOLDER)'
+AEM_DEPLOY_ZIP='$(AEM_DEPLOY_ZIP)'         # optional, set by previous task
+SHOULD_DEPLOY='$(shouldDeploy)'            # optional safety gate from prior checks
 
+# Optional toggles (set as release variables if needed)
+AEM_INSECURE='$(AEM_INSECURE)'             # "true" to allow self-signed; default true
+AEM_X_FORWARDED_FOR='$(AEM_X_FORWARDED_FOR)'  # e.g., "35.173.116.135" or blank
+
+# Validate required variables (also ensure macro substitution happened)
 for v in AEM_DEPLOY_URL AEM_DEPLOY_USERNAME AEM_DEPLOY_PASSWORD AEM_DEPLOY_ARTIFACT_FOLDER; do
-  val="${!v}"; [[ -z "$val" || "$val" == *'$('* ]] && { echo "ERROR: $v not set"; exit 1; }
+  val="${!v}"
+  if [[ -z "$val" || "$val" == *'$('* ]]; then
+    echo "ERROR: $v is not set."
+    exit 1
+  fi
 done
 
-RETRIES=3
-BACKOFF=15
+if [[ "${SHOULD_DEPLOY,,}" != "true" ]]; then
+  echo "shouldDeploy is not True. Skipping deploy."
+  exit 0
+fi
 
-# ---- pick the ZIP ----
-FILEPATH="$(ls "$AEM_DEPLOY_ARTIFACT_FOLDER"/*.zip -1 2>/dev/null | head -n1 || true)"
-[[ -z "${FILEPATH}" ]] && { echo "No ZIP in $AEM_DEPLOY_ARTIFACT_FOLDER"; exit 0; }
+# ---------------- Pick the ZIP ----------------
+FILEPATH=""
+if [[ -n "${AEM_DEPLOY_ZIP:-}" && -f "$AEM_DEPLOY_ZIP" ]]; then
+  FILEPATH="$AEM_DEPLOY_ZIP"
+else
+  FILEPATH="$(ls -1 "${AEM_DEPLOY_ARTIFACT_FOLDER}"/*.zip 2>/dev/null | head -n1 || true)"
+fi
+
+if [[ -z "$FILEPATH" || ! -f "$FILEPATH" ]]; then
+  echo "No ZIP found to deploy in: ${AEM_DEPLOY_ARTIFACT_FOLDER}"
+  exit 0
+fi
+
+if [[ ! -s "$FILEPATH" ]]; then
+  echo "ZIP exists but is empty: $FILEPATH"
+  exit 1
+fi
+
 FILENAME="$(basename "$FILEPATH")"
 BASENAME="${FILENAME%.zip}"
 
+# Registry/group from filename convention
 REGISTRY="com.bridgestone.bsro.aem"
 [[ "$BASENAME" == xtc* ]] && REGISTRY="bsro_hotfix"
 
 PKG_PATH="/etc/packages/${REGISTRY}/${FILENAME}"
-PKG_URL="${AEM_DEPLOY_URL}${PKG_PATH}"
+UPLOAD_URL="${AEM_DEPLOY_URL%/}/crx/packmgr/service/.json/?cmd=upload"
+INSTALL_URL="${AEM_DEPLOY_URL%/}/crx/packmgr/service/.json${PKG_PATH}?cmd=install&recursive=true"
 
-echo "Package: $PKG_PATH"
-echo "From:    $FILEPATH"
+echo "Package path: ${PKG_PATH}"
+echo "Deploying from: ${FILEPATH}"
+echo "Upload URL:  ${UPLOAD_URL}"
+echo "Install URL: ${INSTALL_URL}"
 
-has_cmd(){ command -v "$1" >/dev/null 2>&1; }
+# ---------------- Curl options ----------------
+CURL_OPTS=(-sS -L --retry 6 --retry-delay 5 --retry-connrefused -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}")
+[[ "${AEM_INSECURE,,}" != "false" ]] && CURL_OPTS+=(-k)
+[[ -n "${AEM_X_FORWARDED_FOR:-}" ]] && CURL_OPTS+=(-H "X-Forwarded-For: ${AEM_X_FORWARDED_FOR}")
 
 json_success () {
-  # echo "true" if {"success":true}, otherwise "false"
-  if has_cmd jq; then
-    echo "$1" | jq -r '.success // empty' 2>/dev/null | grep -qi '^true$' && echo true || echo false
+  # prints "true" if {"success":true} present, else "false"
+  if command -v jq >/dev/null 2>&1; then
+    echo "$1" | jq -r '.success // false' 2>/dev/null | grep -qi '^true$' && echo true || echo false
   else
     [[ "$1" =~ \"success\"[[:space:]]*:[[:space:]]*true ]] && echo true || echo false
   fi
 }
 
-http_code () {
-  curl -sS -L -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" -o /dev/null -w '%{http_code}' "$1" || echo 000
-}
+# ---------------- Upload ----------------
+echo "Uploading package…"
+upload_resp="$(curl "${CURL_OPTS[@]}" -F force=true -F name="${FILENAME}" -F file=@"${FILEPATH}" "${UPLOAD_URL}" || true)"
+if [[ "$(json_success "$upload_resp")" != "true" ]]; then
+  echo "Upload failed or not acknowledged as success."
+  echo "Response:"
+  echo "$upload_resp"
+  exit 1
+fi
+echo "Upload acknowledged."
 
-curl -k -v -H "X-Forwarded-For: 35.173.116.135" --retry 6 --retry-max-time 180 -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}" \
-         -F install=true -F strict=true -F file=@"$FILEPATH" https://dev-monks-author.cwhsandbox.com/crx/packmgr/service.jsp
+# ---------------- Install ----------------
+echo "Installing package…"
+install_resp="$(curl "${CURL_OPTS[@]}" -X POST "${INSTALL_URL}" || true)"
+if [[ "$(json_success "$install_resp")" != "true" ]]; then
+  echo "Install failed or not acknowledged as success."
+  echo "Response:"
+  echo "$install_resp"
+  exit 1
+fi
+echo "Install acknowledged as success."
 
-  
+# Optional: expose status/paths for later steps
+echo "##vso[task.setvariable variable=DeployedPackagePath;]${PKG_PATH}"
+echo "Deployment complete."
