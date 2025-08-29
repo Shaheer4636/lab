@@ -1,42 +1,80 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(System.DefaultWorkingDirectory)"
-ALIAS="$(Release.PrimaryArtifactSourceAlias)"
+# Classic Release provides both macros and env vars; support either.
+ROOT="${SYSTEM_DEFAULTWORKINGDIRECTORY:-$(System.DefaultWorkingDirectory)}"
+ALIAS="${RELEASE_PRIMARYARTIFACTSOURCEALIAS:-$(Release.PrimaryArtifactSourceAlias)}"
+
+# Your auth artifact layout from the screenshot
+ARTIFACT_DIRNAME="${ARTIFACT_DIRNAME:-AuthorContent}"
+ZIP_NAME="${ZIP_NAME:-dwdpkg-auth-artifacts.zip}"
+ZIP_PATTERN="${ZIP_PATTERN:-*auth*.zip}"
 
 echo "DefaultWorkingDirectory: $ROOT"
-echo "Top-level under ROOT:"
+echo "Primary Artifact Alias:  ${ALIAS:-<none>}"
+echo "Expecting folder:        $ARTIFACT_DIRNAME"
+echo "Preferred zip name:      $ZIP_NAME"
+echo "Fallback zip pattern:    $ZIP_PATTERN"
+echo "Root listing:"
 ls -la "$ROOT" || true
 
-resolve_artifact_dir() {
-  local cand1="$ROOT/_$ALIAS/zip-artifacts"
-  local cand2="$ROOT/$ALIAS/zip-artifacts"
+# Possible bases where Release downloads artifacts
+bases=("$ROOT/_$ALIAS" "$ROOT/$ALIAS" "$ROOT")
+found_dir=""
 
-  for d in "$cand1" "$cand2"; do
-    if [ -d "$d" ]; then
-      echo "$d"
-      return 0
-    fi
-  done
-
-  # Fallback: find a zip anywhere under ROOT and use its directory
-  local zip
-  zip="$(find "$ROOT" -maxdepth 5 -type f -name '*.zip' | head -n1 || true)"
-  if [ -n "$zip" ]; then
-    dirname "$zip"
-    return 0
+for b in "${bases[@]}"; do
+  candidate="$b/$ARTIFACT_DIRNAME"
+  if [[ -d "$candidate" ]]; then
+    found_dir="$candidate"
+    break
   fi
+done
 
-  return 1
-}
-
-if ART_DIR="$(resolve_artifact_dir)"; then
-  echo "Resolved artifact dir: $ART_DIR"
-  echo "##vso[task.setvariable variable=AEM_DEPLOY_ARTIFACT_FOLDER;]$ART_DIR"
-  echo "##vso[task.setvariable variable=shouldDeploy;]True"
-  echo "Artifact folder exists. Proceeding."
-else
-  echo "Could not resolve artifact dir."
-  echo "##vso[task.setvariable variable=shouldDeploy;]False"
-  echo "Artifact folder NOT found. Skipping."
+# Fallback: detect by ZIP anywhere under ROOT
+if [[ -z "$found_dir" ]]; then
+  mapfile -t zips < <(find "$ROOT" -maxdepth 6 -type f \( -name "$ZIP_NAME" -o -name "$ZIP_PATTERN" \) 2>/dev/null | sort)
+  if [[ ${#zips[@]} -gt 0 ]]; then
+    found_dir="$(dirname "${zips[-1]}")"
+  fi
 fi
+
+if [[ -z "$found_dir" || ! -d "$found_dir" ]]; then
+  echo "Could not resolve artifact directory."
+  echo "##vso[task.setvariable variable=shouldDeploy;]False"
+  exit 0
+fi
+
+echo "Resolved artifact dir: $found_dir"
+echo "Contents:"
+ls -la "$found_dir" || true
+
+# Pick the ZIP: exact name first, else pattern in that folder
+zip_path=""
+if [[ -f "$found_dir/$ZIP_NAME" ]]; then
+  zip_path="$found_dir/$ZIP_NAME"
+else
+  mapfile -t zips2 < <(find "$found_dir" -maxdepth 2 -type f \( -name "$ZIP_NAME" -o -name "$ZIP_PATTERN" \) 2>/dev/null | sort)
+  if [[ ${#zips2[@]} -gt 0 ]]; then
+    zip_path="${zips2[-1]}"
+  fi
+fi
+
+if [[ -z "$zip_path" ]]; then
+  echo "No ZIP matching '$ZIP_NAME' or '$ZIP_PATTERN' found in $found_dir"
+  echo "##vso[task.setvariable variable=shouldDeploy;]False"
+  exit 0
+fi
+
+if [[ ! -s "$zip_path" ]]; then
+  echo "ZIP exists but is empty: $zip_path"
+  echo "##vso[task.setvariable variable=shouldDeploy;]False"
+  exit 0
+fi
+
+echo "Using ZIP: $zip_path"
+
+# Export variables for later tasks
+echo "##vso[task.setvariable variable=AEM_DEPLOY_ARTIFACT_FOLDER;]$found_dir"
+echo "##vso[task.setvariable variable=AEM_DEPLOY_ZIP;]$zip_path"
+echo "##vso[task.setvariable variable=shouldDeploy;]True"
+echo "Artifact located. Proceeding."
