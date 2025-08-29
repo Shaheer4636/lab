@@ -1,3 +1,8 @@
+trigger: none
+
+pool:
+  name: "CWH Sandbox BSRO"
+
 variables:
   authorArtifactUrl: "https://dev.azure.com/BridgestoneGlobal/39785de8-4f00-4b0f-bb9c-d70ab9809232/_apis/build/builds/328818/artifacts?artifactName=dwdpkg-auth-artifacts&api-version=7.1&%24format=zip"
   publishArtifactUrl: "https://dev.azure.com/BridgestoneGlobal/39785de8-4f00-4b0f-bb9c-d70ab9809232/_apis/build/builds/328818/artifacts?artifactName=dwdpkg-pub-artifacts&api-version=7.1&%24format=zip"
