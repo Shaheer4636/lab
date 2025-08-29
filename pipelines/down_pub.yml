@@ -1,37 +1,74 @@
-trigger: none
+trigger:
+  branches:
+    include:
+      - master
 
 pool:
   name: "CWH Sandbox BSRO"
 
 variables:
-  authorArtifactUrl: "https://dev.azure.com/BridgestoneGlobal/39785de8-4f00-4b0f-bb9c-d70ab9809232/_apis/build/builds/328818/artifacts?artifactName=dwdpkg-auth-artifacts&api-version=7.1&%24format=zip"
-  publishArtifactUrl: "https://dev.azure.com/BridgestoneGlobal/39785de8-4f00-4b0f-bb9c-d70ab9809232/_apis/build/builds/328818/artifacts?artifactName=dwdpkg-pub-artifacts&api-version=7.1&%24format=zip"
-  artifactFolder: "$(Pipeline.Workspace)/artifacts"
+  organization: 'BridgestoneGlobal'                # Azure DevOps org
+  project: 'BSRO'                                   # Source project NAME
+  buildId: '328818'                                 # Source build ID
+  authArtifactName: 'dwdpkg-auth-artifacts'         # Artifact names in that build
+  pubArtifactName:  'dwdpkg-pub-artifacts'
+  artifactFolder: '$(Pipeline.Workspace)/artifacts' # Where we store the zips
 
 steps:
-- task: UsePythonVersion@0
+- checkout: none
+
+- task: Bash@3
+  displayName: "Download artifacts (with OAuth or PAT)"
+  env:
+    # If you prefer PAT, create a secret variable named ARTIFACT_PAT in the pipeline.
+    ARTIFACT_PAT: $(ARTIFACT_PAT)
+    SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+    ORG: $(organization)
+    PROJ: $(project)
+    BUILD: $(buildId)
+    AUTH_NAME: $(authArtifactName)
+    PUB_NAME: $(pubArtifactName)
+    ART_DIR: $(artifactFolder)
   inputs:
-    versionSpec: '3.x'
+    targetType: inline
+    script: |
+      set -euo pipefail
 
-- script: |
-    echo "Creating artifacts folder..."
-    mkdir -p "$(artifactFolder)"
+      mkdir -p "$ART_DIR"
 
-    echo "Downloading Author Content artifact..."
-    curl -L -o "$(artifactFolder)/dwdpkg-auth-artifacts.zip" "$(authorArtifactUrl)"
+      AUTH_URL="https://dev.azure.com/${ORG}/${PROJ}/_apis/build/builds/${BUILD}/artifacts?artifactName=${AUTH_NAME}&api-version=7.1&%24format=zip"
+      PUB_URL="https://dev.azure.com/${ORG}/${PROJ}/_apis/build/builds/${BUILD}/artifacts?artifactName=${PUB_NAME}&api-version=7.1&%24format=zip"
 
-    echo "Downloading Publish Content artifact..."
-    curl -L -o "$(artifactFolder)/dwdpkg-pub-artifacts.zip" "$(publishArtifactUrl)"
-  displayName: "Download Artifacts"
+      # Choose auth: PAT if provided, else System.AccessToken (OAuth)
+      if [ -n "${ARTIFACT_PAT:-}" ]; then
+        echo "Using PAT for authentication"
+        CURL_AUTH=(-u ":${ARTIFACT_PAT}")
+      else
+        echo "Using System.AccessToken for authentication"
+        CURL_AUTH=(-H "Authorization: Bearer ${SYSTEM_ACCESSTOKEN}")
+      fi
+
+      echo "Downloading ${AUTH_NAME}..."
+      curl -fSL --retry 5 --retry-connrefused "${CURL_AUTH[@]}" \
+        -o "${ART_DIR}/${AUTH_NAME}.zip" "${AUTH_URL}"
+
+      echo "Downloading ${PUB_NAME}..."
+      curl -fSL --retry 5 --retry-connrefused "${CURL_AUTH[@]}" \
+        -o "${ART_DIR}/${PUB_NAME}.zip" "${PUB_URL}"
+
+      echo "Download complete:"
+      ls -lh "${ART_DIR}"
 
 - task: PublishPipelineArtifact@1
+  displayName: "Publish AuthorContent"
   inputs:
-    targetPath: '$(artifactFolder)/dwdpkg-auth-artifacts.zip'
+    targetPath: '$(artifactFolder)/$(authArtifactName).zip'
     artifact: 'AuthorContent'
     publishLocation: 'pipeline'
 
 - task: PublishPipelineArtifact@1
+  displayName: "Publish PublishContent"
   inputs:
-    targetPath: '$(artifactFolder)/dwdpkg-pub-artifacts.zip'
+    targetPath: '$(artifactFolder)/$(pubArtifactName).zip'
     artifact: 'PublishContent'
     publishLocation: 'pipeline'
