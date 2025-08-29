@@ -1,126 +1,80 @@
-parameters:
-- name: bsro-dam-author-ht-refactor-1.0.0_
-  type: boolean
-  default: false  
-- name: bsro-dam-author-wwt-refactor-1.0.0_
-  type: boolean
-  default: false
-- name: bsro-dam-author-fcac-refactor-1.0.0_
-  type: boolean
-  default: false
-- name: bsro-dam-author-tp-refactor-1.0.0_
-  type: boolean
-  default: false
-- name: bsro-dam-author-global-refactor-1.0.0_
-  type: boolean
-  default: false
-- name: bsro-ht-author-content-1.0.3_
-  type: boolean
-  default: true
-- name: bsro-wwt-author-content-1.0.3_
-  type: boolean
-  default: true
-- name: bsro-fcac-author-content-1.0.3_
-  type: boolean
-  default: true
-- name: bsro-tp-author-content-1.0.3_
-  type: boolean
-  default: true
-- name: bsro-bsro-author-content-1.0.3_
-  type: boolean
-  default: true
-- name: bsro.edam.metadata.author.full-
-  type: boolean
-  default: true
-- name: bsro-dam-publish-ht-refactor-1.0.0_
-  type: boolean
-  default: false
-- name: bsro-dam-publish-wwt-refactor-1.0.0_
-  type: boolean
-  default: false
-- name: bsro-dam-publish-fcac-refactor-1.0.0_
-  type: boolean
-  default: false
-- name: bsro-dam-publish-tp-refactor-1.0.0_
-  type: boolean
-  default: false
-- name: bsro-dam-publish-global-refactor-1.0.0_
-  type: boolean
-  default: false
-- name: bsro-ht-publish-content-1.0.3_
-  type: boolean
-  default: true
-- name: bsro-wwt-publish-content-1.0.3_
-  type: boolean
-  default: true
-- name: bsro-fcac-publish-content-1.0.3_
-  type: boolean
-  default: true
-- name: bsro-tp-publish-content-1.0.3_
-  type: boolean
-  default: true
-- name: bsro-bsro-publish-content-1.0.3_
-  type: boolean
-  default: true
-- name: bsro.edam.metadata.publish.full-
-  type: boolean
-  default: true
-- name: bsro-seo-data
-  type: boolean
-  default: false
-  
-# variables:
-# - group: AEM_VARIABLE_GROUP
-
 trigger: none
-
-schedules:
-- cron: "00 11 * * 1"
-  displayName: Scheduled build
-  branches:
-    include:
-    - master
-  always: true
 
 pool:
   name: "CWH Sandbox BSRO"
 
+variables:
+  sourceProjectId: '39785de8-4f00-4b0f-bb9c-d70ab9809232'   # from your URL
+  sourcePipelineId: '849'                                    # definitionId from the pipeline link
+  sourceBuildId: '328818'                                    # build that produced the artifacts
+
 stages:
-- stage: RenameAndRebuild
+- stage: FetchAndRepublish
+  displayName: Download & republish build $(sourceBuildId) artifacts
   jobs:
-  - job: RenameAndRebuild
-    displayName: RenameAndRebuild
-    steps: 
-    - task: DeleteFiles@1
-      displayName: Deleting artifacts folder
-      inputs:
-        SourceFolder: 
-        Contents: '**/dwdpkg-artifacts/*'
-        
-    - ${{ each parameter in parameters }}:
-      - ${{ if eq(parameter.Value, true) }}:
-        - template: ./harvest-template.yaml
-          parameters:
-            packagename: ${{ parameter.Key }}
+  - job: Fetch
+    steps:
+    - bash: |
+        set -euxo pipefail
+        rm -rf dwdpkg-artifacts || true
+        mkdir -p dwdpkg-artifacts
+      displayName: Prep folders
 
-    - task: PublishBuildArtifacts@1
-      name: publishauthartifacts
+    # Download "Author Content"
+    - task: DownloadBuildArtifacts@1
+      displayName: Download "dwdpkg-auth-artifacts"
       inputs:
-        PathtoPublish: './dwdpkg-artifacts/auth'
+        buildType: 'specific'
+        project: '$(sourceProjectId)'
+        pipeline: '$(sourcePipelineId)'        # alias: definition
+        buildVersionToDownload: 'specific'
+        buildId: '$(sourceBuildId)'
+        downloadType: 'single'
+        artifactName: 'dwdpkg-auth-artifacts'
+        downloadPath: '$(Build.SourcesDirectory)/dwdpkg-artifacts'
+
+    # Download "Publish Content"
+    - task: DownloadBuildArtifacts@1
+      displayName: Download "dwdpkg-pub-artifacts"
+      inputs:
+        buildType: 'specific'
+        project: '$(sourceProjectId)'
+        pipeline: '$(sourcePipelineId)'
+        buildVersionToDownload: 'specific'
+        buildId: '$(sourceBuildId)'
+        downloadType: 'single'
+        artifactName: 'dwdpkg-pub-artifacts'
+        downloadPath: '$(Build.SourcesDirectory)/dwdpkg-artifacts'
+
+    # Normalize folder names to match your publish paths
+    - bash: |
+        set -euxo pipefail
+        # If the tasks created folders named after the artifact, rename them
+        if [ -d "dwdpkg-artifacts/dwdpkg-auth-artifacts" ]; then
+          rm -rf dwdpkg-artifacts/auth || true
+          mv dwdpkg-artifacts/dwdpkg-auth-artifacts dwdpkg-artifacts/auth
+        fi
+        if [ -d "dwdpkg-artifacts/dwdpkg-pub-artifacts" ]; then
+          rm -rf dwdpkg-artifacts/pub || true
+          mv dwdpkg-artifacts/dwdpkg-pub-artifacts dwdpkg-artifacts/pub
+        fi
+        # Ensure paths exist even if artifacts were empty
+        mkdir -p dwdpkg-artifacts/auth dwdpkg-artifacts/pub
+        ls -la dwdpkg-artifacts/auth || true
+        ls -la dwdpkg-artifacts/pub || true
+      displayName: Normalize downloaded paths
+
+    # Re-publish as build artifacts
+    - task: PublishBuildArtifacts@1
+      displayName: Publish "Author Content"
+      inputs:
+        PathtoPublish: '$(Build.SourcesDirectory)/dwdpkg-artifacts/auth'
         ArtifactName: 'dwdpkg-auth-artifacts'
+        publishLocation: 'Container'
 
     - task: PublishBuildArtifacts@1
-      name: publishpubartifacts
+      displayName: Publish "Publish Content"
       inputs:
-        PathtoPublish: './dwdpkg-artifacts/pub'
+        PathtoPublish: '$(Build.SourcesDirectory)/dwdpkg-artifacts/pub'
         ArtifactName: 'dwdpkg-pub-artifacts'
-
-
-
-        
-Author Content : https://dev.azure.com/BridgestoneGlobal/39785de8-4f00-4b0f-bb9c-d70ab9809232/_apis/build/builds/328818/artifacts?artifactName=dwdpkg-auth-artifacts&api-version=7.1&%24format=zip
-
-Publish Content: https://dev.azure.com/BridgestoneGlobal/39785de8-4f00-4b0f-bb9c-d70ab9809232/_apis/build/builds/328818/artifacts?artifactName=dwdpkg-pub-artifacts&api-version=7.1&%24format=zip
-
-Here is the current pipeline https://dev.azure.com/BridgestoneGlobal/BSRO/_build?definitionId=849 that builds
-harvested content packages (Author Content and Publish Content).
+        publishLocation: 'Container'
