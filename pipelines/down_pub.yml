@@ -4,67 +4,77 @@ pool:
   name: "CWH Sandbox BSRO"
 
 variables:
-  sourceProjectId: '39785de8-4f00-4b0f-bb9c-d70ab9809232'   # from your URL
-  sourcePipelineId: '849'                                    # definitionId from the pipeline link
-  sourceBuildId: '328818'                                    # build that produced the artifacts
+  sourceProject: 'BSRO'                 # Project NAME (not GUID)
+  sourceDefinitionId: '849'             # Pipeline definitionId
+  sourceBuildId: '328818'               # Build that produced the artifacts
+  authArtifact: 'dwdpkg-auth-artifacts' # Artifact names (must match source build)
+  pubArtifact:  'dwdpkg-pub-artifacts'
 
 stages:
-- stage: FetchAndRepublish
-  displayName: Download & republish build $(sourceBuildId) artifacts
+- stage: DownloadAndRepublish
+  displayName: Download & republish $(sourceBuildId)
   jobs:
   - job: Fetch
+    displayName: Fetch and publish
     steps:
+    - checkout: none
+
+    - task: DeleteFiles@1
+      displayName: Clean dwdpkg-artifacts
+      inputs:
+        SourceFolder: '$(Build.SourcesDirectory)'
+        Contents: 'dwdpkg-artifacts/**'
+        RemoveSourceFolder: false
+
     - bash: |
         set -euxo pipefail
-        rm -rf dwdpkg-artifacts || true
-        mkdir -p dwdpkg-artifacts
+        mkdir -p "$(Build.SourcesDirectory)/dwdpkg-artifacts"
       displayName: Prep folders
 
     # Download "Author Content"
     - task: DownloadBuildArtifacts@1
-      displayName: Download "dwdpkg-auth-artifacts"
+      displayName: Download "$(authArtifact)"
       inputs:
         buildType: 'specific'
-        project: '$(sourceProjectId)'
-        pipeline: '$(sourcePipelineId)'        # alias: definition
+        project: '$(sourceProject)'            # Use project NAME
+        definition: '$(sourceDefinitionId)'    # definitionId of the source pipeline
         buildVersionToDownload: 'specific'
         buildId: '$(sourceBuildId)'
         downloadType: 'single'
-        artifactName: 'dwdpkg-auth-artifacts'
+        artifactName: '$(authArtifact)'
         downloadPath: '$(Build.SourcesDirectory)/dwdpkg-artifacts'
 
     # Download "Publish Content"
     - task: DownloadBuildArtifacts@1
-      displayName: Download "dwdpkg-pub-artifacts"
+      displayName: Download "$(pubArtifact)"
       inputs:
         buildType: 'specific'
-        project: '$(sourceProjectId)'
-        pipeline: '$(sourcePipelineId)'
+        project: '$(sourceProject)'
+        definition: '$(sourceDefinitionId)'
         buildVersionToDownload: 'specific'
         buildId: '$(sourceBuildId)'
         downloadType: 'single'
-        artifactName: 'dwdpkg-pub-artifacts'
+        artifactName: '$(pubArtifact)'
         downloadPath: '$(Build.SourcesDirectory)/dwdpkg-artifacts'
 
-    # Normalize folder names to match your publish paths
+    # Normalize to the folder names your publish step expects
     - bash: |
         set -euxo pipefail
-        # If the tasks created folders named after the artifact, rename them
-        if [ -d "dwdpkg-artifacts/dwdpkg-auth-artifacts" ]; then
-          rm -rf dwdpkg-artifacts/auth || true
-          mv dwdpkg-artifacts/dwdpkg-auth-artifacts dwdpkg-artifacts/auth
+        ROOT="$(Build.SourcesDirectory)/dwdpkg-artifacts"
+        if [ -d "$ROOT/$(authArtifact)" ]; then
+          rm -rf "$ROOT/auth"
+          mv "$ROOT/$(authArtifact)" "$ROOT/auth"
         fi
-        if [ -d "dwdpkg-artifacts/dwdpkg-pub-artifacts" ]; then
-          rm -rf dwdpkg-artifacts/pub || true
-          mv dwdpkg-artifacts/dwdpkg-pub-artifacts dwdpkg-artifacts/pub
+        if [ -d "$ROOT/$(pubArtifact)" ]; then
+          rm -rf "$ROOT/pub"
+          mv "$ROOT/$(pubArtifact)" "$ROOT/pub"
         fi
-        # Ensure paths exist even if artifacts were empty
-        mkdir -p dwdpkg-artifacts/auth dwdpkg-artifacts/pub
-        ls -la dwdpkg-artifacts/auth || true
-        ls -la dwdpkg-artifacts/pub || true
-      displayName: Normalize downloaded paths
+        mkdir -p "$ROOT/auth" "$ROOT/pub"
+        echo "Auth contents:" && ls -la "$ROOT/auth" || true
+        echo "Pub contents:"  && ls -la "$ROOT/pub"  || true
+      displayName: Normalize folders
 
-    # Re-publish as build artifacts
+    # Re-publish as build artifacts (same names)
     - task: PublishBuildArtifacts@1
       displayName: Publish "Author Content"
       inputs:
