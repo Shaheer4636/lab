@@ -7,21 +7,20 @@ AEM_DEPLOY_USERNAME='$(AEM_DEPLOY_USERNAME)'
 AEM_DEPLOY_PASSWORD='$(AEM_DEPLOY_PASSWORD)'
 AEM_DEPLOY_ARTIFACT_FOLDER='$(AEM_DEPLOY_ARTIFACT_FOLDER)'
 
-# Optional (from earlier steps)
+# From previous tasks
 AEM_DEPLOY_ZIP='$(AEM_DEPLOY_ZIP)'
 SHOULD_DEPLOY='$(shouldDeploy)'
 
 # Optional toggles
-AEM_INSECURE='$(AEM_INSECURE)'                  # true/false (default true)
-AEM_X_FORWARDED_FOR='$(AEM_X_FORWARDED_FOR)'    # e.g. allow-listed IP like 35.173.116.135
+AEM_INSECURE='$(AEM_INSECURE)'                 # true/false (default true)
+AEM_X_FORWARDED_FOR='$(AEM_X_FORWARDED_FOR)'   # e.g. allow-listed IP like 35.173.116.135
 
 # Validate required vars & gate on shouldDeploy
 for v in AEM_DEPLOY_URL AEM_DEPLOY_USERNAME AEM_DEPLOY_PASSWORD AEM_DEPLOY_ARTIFACT_FOLDER; do
-  val="${!v}"
-  [[ -z "$val" || "$val" == *'$('* ]] && { echo "ERROR: $v not set"; exit 1; }
+  val="${!v}"; [[ -z "$val" || "$val" == *'$('* ]] && { echo "ERROR: $v not set"; exit 1; }
 done
 if [[ "${SHOULD_DEPLOY,,}" != "true" ]]; then
-  echo "shouldDeploy is not True. Skipping deploy."
+  echo "shouldDeploy != true, skipping."
   exit 0
 fi
 
@@ -38,27 +37,24 @@ fi
 FILENAME="$(basename "$FILEPATH")"
 BASENAME="${FILENAME%.zip}"
 
-# Package group by name convention
+# Group by name convention
 REGISTRY="com.bridgestone.bsro.aem"
 [[ "$BASENAME" == xtc* ]] && REGISTRY="bsro_hotfix"
 
-PKG_PATH="/etc/packages/${REGISTRY}/${FILENAME}"
 BASE="${AEM_DEPLOY_URL%/}"
+PKG_PATH="/etc/packages/${REGISTRY}/${FILENAME}"
 UPLOAD_JSON="${BASE}/crx/packmgr/service/.json/?cmd=upload"
 INSTALL_JSON="${BASE}/crx/packmgr/service/.json${PKG_PATH}?cmd=install&recursive=true"
 UPLOAD_JSP="${BASE}/crx/packmgr/service.jsp?cmd=upload&force=true&install=true"
+WEBDAV_PUT="${BASE}${PKG_PATH}"   # PUT the zip directly under /etc/packages/<group>/<file>
 
 echo "Package path: ${PKG_PATH}"
 echo "Deploying from: ${FILEPATH}"
-echo "Upload(JSON):  ${UPLOAD_JSON}"
-echo "Install(JSON): ${INSTALL_JSON}"
-echo "Upload(JSP):   ${UPLOAD_JSP}"
 
-# Curl options
+# Curl options (HTTP/1.1, friendly headers)
 CURL_OPTS=(-sS -L --http1.1 --retry 6 --retry-delay 5 --retry-connrefused -u "${AEM_DEPLOY_USERNAME}:${AEM_DEPLOY_PASSWORD}")
 [[ "${AEM_INSECURE,,}" != "false" ]] && CURL_OPTS+=(-k)
-# Friendly headers (help with some CSRF/WAF setups)
-CURL_OPTS+=(-H "X-Requested-By: pipeline" -H "X-Requested-With: curl" -H "Cache-Control: no-cache")
+CURL_OPTS+=(-H "X-Requested-By: pipeline" -H "X-Requested-With: curl" -H "Cache-Control: no-cache" -H "Expect:")
 [[ -n "${AEM_X_FORWARDED_FOR:-}" ]] && CURL_OPTS+=(-H "X-Forwarded-For: ${AEM_X_FORWARDED_FOR}")
 
 json_success () {
@@ -73,37 +69,60 @@ http_code () {
   curl "${CURL_OPTS[@]}" -o /dev/null -w '%{http_code}' "$1" || echo 000
 }
 
-# --- Attempt 1: JSON API (upload then install) ---
-echo "Uploading via JSON API…"
+# --- Attempt 1: JSON upload then JSON install ---
+echo "Uploading via JSON API: ${UPLOAD_JSON}"
 upload_resp="$(curl "${CURL_OPTS[@]}" -F force=true -F name="${FILENAME}" -F file=@"${FILEPATH}" "${UPLOAD_JSON}" || true)"
-upload_ok="$(json_success "$upload_resp")"
-echo "Upload(JSON) success: $upload_ok"
-
-if [[ "$upload_ok" == "true" ]]; then
-  echo "Installing via JSON API…"
+if [[ "$(json_success "$upload_resp")" == "true" ]]; then
+  echo "Install via JSON: ${INSTALL_JSON}"
   install_resp="$(curl "${CURL_OPTS[@]}" -X POST "${INSTALL_JSON}" || true)"
-  install_ok="$(json_success "$install_resp")"
-  echo "Install(JSON) success: $install_ok"
-  if [[ "$install_ok" == "true" ]]; then
-    echo "Install acknowledged as success."
+  if [[ "$(json_success "$install_resp")" == "true" ]]; then
+    echo "Install success (JSON)."
     echo "##vso[task.setvariable variable=DeployedPackagePath;]${PKG_PATH}"
     exit 0
+  else
+    echo "Install(JSON) failed. HTTP $(http_code "${INSTALL_JSON}")"
   fi
 else
-  code="$(http_code "${UPLOAD_JSON}")"
-  echo "Upload(JSON) failed. HTTP: $code"
+  echo "Upload(JSON) failed. HTTP $(http_code "${UPLOAD_JSON}")"
 fi
 
-# --- Attempt 2: JSP API (combined upload+install) ---
-echo "Falling back to JSP endpoint (upload+install)…"
+# --- Attempt 2: JSP upload+install ---
+echo "Falling back to JSP endpoint: ${UPLOAD_JSP}"
 jsp_resp="$(curl "${CURL_OPTS[@]}" -F name="${FILENAME}" -F file=@"${FILEPATH}" "${UPLOAD_JSP}" || true)"
-# Heuristic: success words in HTML response
 if echo "$jsp_resp" | grep -qiE 'success|installed|Package.*(uploaded|installed)'; then
   echo "JSP endpoint reports success."
   echo "##vso[task.setvariable variable=DeployedPackagePath;]${PKG_PATH}"
   exit 0
+else
+  echo "JSP failed. HTTP $(http_code "${UPLOAD_JSP}")"
 fi
 
-echo "Deploy failed. Last response:"
-echo "$jsp_resp"
+# --- Attempt 3: WebDAV PUT upload, then install (JSON or JSP) ---
+echo "Trying WebDAV PUT to ${WEBDAV_PUT}"
+put_code="$(curl "${CURL_OPTS[@]}" -T "${FILEPATH}" -H "Content-Type: application/zip" -o /dev/null -w '%{http_code}' "${WEBDAV_PUT}" || true)"
+echo "PUT HTTP: $put_code"
+if [[ "$put_code" =~ ^20[01]$ ]]; then
+  echo "PUT upload ok. Installing…"
+  install_resp="$(curl "${CURL_OPTS[@]}" -X POST "${INSTALL_JSON}" || true)"
+  if [[ "$(json_success "$install_resp")" == "true" ]]; then
+    echo "Install success (after PUT, JSON)."
+    echo "##vso[task.setvariable variable=DeployedPackagePath;]${PKG_PATH}"
+    exit 0
+  fi
+  # last resort: JSP install (some WAFs allow POST without multipart)
+  INSTALL_JSP_ONLY="${BASE}/crx/packmgr/service.jsp?cmd=install&recursive=true&path=${PKG_PATH}"
+  echo "Trying JSP install only: ${INSTALL_JSP_ONLY}"
+  jsp_install_resp="$(curl "${CURL_OPTS[@]}" -X POST "${INSTALL_JSP_ONLY}" || true)"
+  if echo "$jsp_install_resp" | grep -qiE 'success|installed'; then
+    echo "JSP install reports success."
+    echo "##vso[task.setvariable variable=DeployedPackagePath;]${PKG_PATH}"
+    exit 0
+  fi
+fi
+
+echo "All deploy attempts blocked. It’s a WAF/allowlist issue."
+echo "Ask WAF team to permit POST/PUT from the agent egress IPs to:"
+echo "  - /crx/packmgr/service/.json (upload, install)"
+echo "  - /crx/packmgr/service.jsp (upload+install)"
+echo "  - /etc/packages/* (PUT for WebDAV upload)"
 exit 1
