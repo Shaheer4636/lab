@@ -1,0 +1,37 @@
+trigger: none
+
+pool:
+  name: "CWH Sandbox BSRO"
+
+stages:
+- stage: BuildAndPublish
+  displayName: Build and Publish Artifacts
+  jobs:
+  - job: PublishJob
+    displayName: Publish Artifacts
+    steps:
+    - task: DeleteFiles@1
+      displayName: Clean artifacts folder
+      inputs:
+        SourceFolder: 
+        Contents: '**/dwdpkg-artifacts/*'
+
+    # (Optional) Debug step: list files before publishing
+    - script: |
+        echo "=== Checking Auth artifacts folder ==="
+        ls -R ./dwdpkg-artifacts/auth || echo "No files in auth"
+        echo "=== Checking Pub artifacts folder ==="
+        ls -R ./dwdpkg-artifacts/pub || echo "No files in pub"
+      displayName: "Verify artifact contents"
+
+    - task: PublishBuildArtifacts@1
+      displayName: Publish Author Content
+      inputs:
+        PathtoPublish: './dwdpkg-artifacts/auth'
+        ArtifactName: 'dwdpkg-auth-artifacts'
+
+    - task: PublishBuildArtifacts@1
+      displayName: Publish Publish Content
+      inputs:
+        PathtoPublish: './dwdpkg-artifacts/pub'
+        ArtifactName: 'dwdpkg-pub-artifacts'
