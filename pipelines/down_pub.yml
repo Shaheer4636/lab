@@ -1,37 +1,126 @@
+parameters:
+- name: bsro-dam-author-ht-refactor-1.0.0_
+  type: boolean
+  default: false  
+- name: bsro-dam-author-wwt-refactor-1.0.0_
+  type: boolean
+  default: false
+- name: bsro-dam-author-fcac-refactor-1.0.0_
+  type: boolean
+  default: false
+- name: bsro-dam-author-tp-refactor-1.0.0_
+  type: boolean
+  default: false
+- name: bsro-dam-author-global-refactor-1.0.0_
+  type: boolean
+  default: false
+- name: bsro-ht-author-content-1.0.3_
+  type: boolean
+  default: true
+- name: bsro-wwt-author-content-1.0.3_
+  type: boolean
+  default: true
+- name: bsro-fcac-author-content-1.0.3_
+  type: boolean
+  default: true
+- name: bsro-tp-author-content-1.0.3_
+  type: boolean
+  default: true
+- name: bsro-bsro-author-content-1.0.3_
+  type: boolean
+  default: true
+- name: bsro.edam.metadata.author.full-
+  type: boolean
+  default: true
+- name: bsro-dam-publish-ht-refactor-1.0.0_
+  type: boolean
+  default: false
+- name: bsro-dam-publish-wwt-refactor-1.0.0_
+  type: boolean
+  default: false
+- name: bsro-dam-publish-fcac-refactor-1.0.0_
+  type: boolean
+  default: false
+- name: bsro-dam-publish-tp-refactor-1.0.0_
+  type: boolean
+  default: false
+- name: bsro-dam-publish-global-refactor-1.0.0_
+  type: boolean
+  default: false
+- name: bsro-ht-publish-content-1.0.3_
+  type: boolean
+  default: true
+- name: bsro-wwt-publish-content-1.0.3_
+  type: boolean
+  default: true
+- name: bsro-fcac-publish-content-1.0.3_
+  type: boolean
+  default: true
+- name: bsro-tp-publish-content-1.0.3_
+  type: boolean
+  default: true
+- name: bsro-bsro-publish-content-1.0.3_
+  type: boolean
+  default: true
+- name: bsro.edam.metadata.publish.full-
+  type: boolean
+  default: true
+- name: bsro-seo-data
+  type: boolean
+  default: false
+  
+# variables:
+# - group: AEM_VARIABLE_GROUP
+
 trigger: none
+
+schedules:
+- cron: "00 11 * * 1"
+  displayName: Scheduled build
+  branches:
+    include:
+    - master
+  always: true
 
 pool:
   name: "CWH Sandbox BSRO"
 
 stages:
-- stage: BuildAndPublish
-  displayName: Build and Publish Artifacts
+- stage: RenameAndRebuild
   jobs:
-  - job: PublishJob
-    displayName: Publish Artifacts
-    steps:
+  - job: RenameAndRebuild
+    displayName: RenameAndRebuild
+    steps: 
     - task: DeleteFiles@1
-      displayName: Clean artifacts folder
+      displayName: Deleting artifacts folder
       inputs:
         SourceFolder: 
         Contents: '**/dwdpkg-artifacts/*'
-
-    # (Optional) Debug step: list files before publishing
-    - script: |
-        echo "=== Checking Auth artifacts folder ==="
-        ls -R ./dwdpkg-artifacts/auth || echo "No files in auth"
-        echo "=== Checking Pub artifacts folder ==="
-        ls -R ./dwdpkg-artifacts/pub || echo "No files in pub"
-      displayName: "Verify artifact contents"
+        
+    - ${{ each parameter in parameters }}:
+      - ${{ if eq(parameter.Value, true) }}:
+        - template: ./harvest-template.yaml
+          parameters:
+            packagename: ${{ parameter.Key }}
 
     - task: PublishBuildArtifacts@1
-      displayName: Publish Author Content
+      name: publishauthartifacts
       inputs:
         PathtoPublish: './dwdpkg-artifacts/auth'
         ArtifactName: 'dwdpkg-auth-artifacts'
 
     - task: PublishBuildArtifacts@1
-      displayName: Publish Publish Content
+      name: publishpubartifacts
       inputs:
         PathtoPublish: './dwdpkg-artifacts/pub'
         ArtifactName: 'dwdpkg-pub-artifacts'
+
+
+
+        
+Author Content : https://dev.azure.com/BridgestoneGlobal/39785de8-4f00-4b0f-bb9c-d70ab9809232/_apis/build/builds/328818/artifacts?artifactName=dwdpkg-auth-artifacts&api-version=7.1&%24format=zip
+
+Publish Content: https://dev.azure.com/BridgestoneGlobal/39785de8-4f00-4b0f-bb9c-d70ab9809232/_apis/build/builds/328818/artifacts?artifactName=dwdpkg-pub-artifacts&api-version=7.1&%24format=zip
+
+Here is the current pipeline https://dev.azure.com/BridgestoneGlobal/BSRO/_build?definitionId=849 that builds
+harvested content packages (Author Content and Publish Content).
