@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+USER_NAME="frank"
+USER_PW='frank@liberty123.com'
+SSHD_CONFIG="/etc/ssh/sshd_config"
+
+# Must run as root
+if [[ $EUID -ne 0 ]]; then
+  echo "Please run as root: sudo bash $0"
+  exit 1
+fi
+
+# 1) Create (or update) the user and add to sudo
+if id -u "$USER_NAME" >/dev/null 2>&1; then
+  echo "User $USER_NAME already exists; ensuring settings…"
+  usermod -aG sudo "$USER_NAME"
+  chsh -s /bin/bash "$USER_NAME"
+else
+  useradd -m -s /bin/bash -G sudo "$USER_NAME"
+fi
+
+# 2) Set password
+echo "${USER_NAME}:${USER_PW}" | chpasswd
+
+# 3) Enable SSH password authentication (if disabled)
+#    Backup sshd_config once (non-overwriting) before changes
+cp -n "$SSHD_CONFIG" "${SSHD_CONFIG}.bak.$(date +%F_%H%M%S)" || true
+
+# Ensure the key options are set as required
+if grep -Eq '^\s*PasswordAuthentication' "$SSHD_CONFIG"; then
+  sed -i -E 's/^\s*#?\s*PasswordAuthentication\s+.*/PasswordAuthentication yes/' "$SSHD_CONFIG"
+else
+  echo "PasswordAuthentication yes" >> "$SSHD_CONFIG"
+fi
+
+# Modern Ubuntu may use KbdInteractiveAuthentication; older uses ChallengeResponseAuthentication
+if grep -Eq '^\s*KbdInteractiveAuthentication' "$SSHD_CONFIG"; then
+  sed -i -E 's/^\s*#?\s*KbdInteractiveAuthentication\s+.*/KbdInteractiveAuthentication no/' "$SSHD_CONFIG"
+fi
+if grep -Eq '^\s*ChallengeResponseAuthentication' "$SSHD_CONFIG"; then
+  sed -i -E 's/^\s*#?\s*ChallengeResponseAuthentication\s+.*/ChallengeResponseAuthentication no/' "$SSHD_CONFIG"
+else
+  echo "ChallengeResponseAuthentication no" >> "$SSHD_CONFIG"
+fi
+
+# Ensure PAM stays enabled for password auth
+if grep -Eq '^\s*UsePAM' "$SSHD_CONFIG"; then
+  sed -i -E 's/^\s*#?\s*UsePAM\s+.*/UsePAM yes/' "$SSHD_CONFIG"
+else
+  echo "UsePAM yes" >> "$SSHD_CONFIG"
+fi
+
+if sshd -t 2>/dev/null; then
+  if systemctl is-active --quiet ssh; then
+    systemctl reload ssh
+  elif systemctl is-active --quiet sshd; then
+    systemctl reload sshd
+  else
+    service ssh restart || service sshd restart
+  fi
+else
+  echo "ERROR: sshd_config validation failed; restore from backup ${SSHD_CONFIG}.bak.*"
+  exit 1
+fi
+
+echo "Done: user '${USER_NAME}' has sudo and can SSH with a password."
