@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+USER_NAME="frank"
+USER_PW='frank@liberty123.com'
+
+# Must run as root
+[[ $EUID -eq 0 ]] || { echo "Run as root: sudo bash $0"; exit 1; }
+
+# Create/update user and grant sudo
+if id -u "$USER_NAME" >/dev/null 2>&1; then
+  usermod -aG sudo "$USER_NAME"
+  chsh -s /bin/bash "$USER_NAME"
+else
+  useradd -m -s /bin/bash -G sudo "$USER_NAME"
+fi
+echo "${USER_NAME}:${USER_PW}" | chpasswd
+
+# Ensure a late sshd drop-in enables password login
+install -d -m 755 /etc/ssh/sshd_config.d
+cat >/etc/ssh/sshd_config.d/99-enable-passwords.conf <<'EOF'
+PasswordAuthentication yes
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+UsePAM yes
+EOF
+
+# Validate and reload sshd
+sshd -t
+systemctl reload ssh || systemctl reload sshd || service ssh restart
+
+echo "User '${USER_NAME}' is in sudo and SSH password logins are enabled."
