@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-USER_NAME="frank"
-USER_PW='frank@liberty123.com'
+USER_NAME="brent"
+USER_PW='brent@liberty123.com'
 SSHD_CONFIG="/etc/ssh/sshd_config"
 
 # Must run as root
