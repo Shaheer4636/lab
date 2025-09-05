@@ -1,0 +1,12 @@
+$ErrorActionPreference = 'Stop'
+$root  = "$env:TEAMCITY_BUILD_CHECKOUTDIR"
+$dist  = Join-Path $root "%app.dir%\dist"
+if (-not (Test-Path $dist)) { throw "Build output not found: $dist" }
+
+$outDir = Join-Path $root "artifacts"
+$outZip = Join-Path $outDir "%artifact.zip%"
+New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+if (Test-Path $outZip) { Remove-Item $outZip -Force }
+Compress-Archive -Path (Join-Path $dist '*') -DestinationPath $outZip
+
+Write-Host "##teamcity[message text='Created package: $outZip']"
