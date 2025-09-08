@@ -1,0 +1,29 @@
+# ---- constants
+$Out = Join-Path $env:TEAMCITY_BUILD_CHECKOUTDIR 'wiz_out'
+$Sarif = Join-Path $Out 'results.sarif'
+$Summary = Join-Path $Out 'container_scan_results.txt'
+$Image = "$env:DockerImageName:$env:ART_BUILD_PACKAGEVERSIONNUMBER"
+
+# clean + prepare
+if (Test-Path $Out) { Remove-Item -Recurse -Force $Out }
+New-Item -ItemType Directory -Force -Path $Out | Out-Null
+
+# RUN THE SCAN *IN CONTAINER* AND WRITE TO HOST FOLDER
+# Replace the wiz command with your exact one, but KEEP the output paths.
+/* EXAMPLE */ docker run --rm `
+  -v "$Out:/out" `
+  $Image `
+  wiz analyze --some-flags --sarif /out/results.sarif --summary /out/container_scan_results.txt
+
+# verify outputs exist
+if (-not (Test-Path $Sarif))   { Write-Error "Wiz output missing: $Sarif";   exit 1 }
+if (-not (Test-Path $Summary)) { Write-Error "Wiz output missing: $Summary"; exit 1 }
+
+# expose paths to other steps + publish artifacts
+Write-Host "##teamcity[setParameter name='wiz.sarif' value='$Sarif']"
+Write-Host "##teamcity[setParameter name='wiz.summary' value='$Summary']"
+Write-Host "##teamcity[publishArtifacts '$Sarif => wiz']"
+Write-Host "##teamcity[publishArtifacts '$Summary => wiz']"
+
+# show a short tail in log (optional)
+Get-Content $Summary | Select-Object -Last 100
