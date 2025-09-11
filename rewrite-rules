@@ -1,0 +1,33 @@
+{
+   "domains":[
+      {
+         "storageAccountName":"#{my.holman.comStorageAccountName}",
+         "domainName":"#{my.holman.comDomainName}",
+         "isPublicFacing":#{isPublicFacing},
+         "rewriteRules": [ { "name": "dvir-admin" },{ "name": "gms" },{ "name": "telematics-ordering-web" },{ "name": "SCBusinessApps" },{ "name": "telematics-fringe-admin" }],
+         "spaRewriteRoute": false
+      },
+      {
+         "storageAccountName":"#{vendor.holman.comStorageAccountName}",
+         "domainName":"#{vendor.holman.comDomainName}",
+         "isPublicFacing":#{isPublicFacing},
+         "rewriteRules": [ { "name": "portal" },{ "name": "portal-bat" },{"name": "portal-qa"},{"name": "SCBusinessApps"},{"name": "apidoc"}],
+         "spaRewriteRoute": false
+      },      
+      {
+         "storageAccountName":"#{apps.holman.comStorageAccountName}",
+         "domainName":"#{apps.holman.comDomainName}",
+         "isPublicFacing": #{isPublicFacing},
+         "rewriteRules": [ { "name": "licensing" },{ "name": "licensing-bat" },{"name": "driver-services" },{ "name": "amclient" },{"name": "api-docs" },{"name": "sc-document-extraction" },{ "name": "client-technology" },{ "name": "finance-ceq" },{ "name": "vr" },{ "name": "remarketing-solutions" },{ "name": "SCBusinessApps" },{ "name": "fleet-admin-portal" }],
+         "spaRewriteRoute": false
+      },
+      {
+         "storageAccountName":"#{Partnerconnect.holman.comStorageAccountName}",
+         "domainName":"#{Partnerconnect.holman.comDomainName}",
+         "isPublicFacing": #{isPublicFacing},
+         "rewriteRules": [],
+         "spaRewriteRoute": true
+      }
+      #{extra-domain-snippet}
+   ]
+}
